@@ -18,7 +18,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     return TRUE;
 }
 
-PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(void) {
+PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     static PLUGININFO piInfo;
 
     piInfo.pszDll = (LPTSTR)L"Swizzle";
