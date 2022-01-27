@@ -1,0 +1,9 @@
+EXPORTS
+	InitializePlugin
+	ShutdownPlugin
+	GetPluginInfo
+	f_reverse
+	_hello
+	remark
+	UNKNOWN_CMD
+	key
