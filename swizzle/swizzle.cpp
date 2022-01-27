@@ -43,5 +43,6 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
 }
 
 PLUGIN_API INT WINAPI f_swizzle(LPTSTR lpszString) {
+    Sprintf(lpszString, L"Swizzle!");
     return 0;
 }

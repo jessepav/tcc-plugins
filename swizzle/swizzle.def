@@ -1,0 +1,5 @@
+EXPORTS
+	InitializePlugin
+	ShutdownPlugin
+	GetPluginInfo
+	f_swizzle
