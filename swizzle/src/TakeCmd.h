@@ -439,7 +439,7 @@ int WINAPI CompareFiles( LPCTSTR szInputName, LPCTSTR szOutputName, int fDisplay
 	  other programs which use the cache contents.
 */
 
-int WINAPI GetLine( HANDLE hFile, LPTSTR pszBuffer, int nMaxSize, int nEditFlag, LPTSTR lpszMask=NULL );
+int WINAPI GetLine( HANDLE hFile, LPTSTR pszBuffer, int nMaxSize, int nEditFlag, LPTSTR lpszMask );
 /*
 	Return a single line in pszLine from a file or pipe
 	
@@ -924,7 +924,7 @@ void WINAPI SetSessionTitle( LPCTSTR pszTitle );
 	Set the TCC or Take Command window title
 */
 
-void WINAPI CenterWindow( HWND hWnd, HWND hParent=NULL );
+void WINAPI CenterWindow( HWND hWnd, HWND hParent );
 /* 
 	Center a window in the TCC / Take Command window
 */
