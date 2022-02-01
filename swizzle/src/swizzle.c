@@ -8,6 +8,7 @@
 #define STRBUF_SIZE 4096
 #define ARGBUF_SIZE 1024
 #define MAX_FUNCSTR_SIZE 32000   // leave a few hundred charcters to spare
+#define MAX_PARAMS 20
 
 static WCHAR *strbuf;
 static WCHAR *argbuf;
@@ -53,25 +54,27 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
     return 0;
 }
 
-#define SAPPEND(sprint_func) \
-    do { \
-        n = sprint_func; \
-        if (n == -1) { return 1; } else { idx += n; remaining -= n; } \
-    } while (0)
-
 PLUGIN_API INT WINAPI f_swizzle(LPTSTR lpszString) {
-    int n, idx = 0, remaining = STRBUF_SIZE - 1;
-    SAPPEND(swprintf_s(strbuf + idx, remaining, L"Parameter string: <<%s>>\n", lpszString));
-    for (int i = 0; i < 20; i++) {
+    UINT idx = 0, nParamIdx;
+    UINT nParams = 0;
+    idx += swprintf_s(strbuf + idx, STRBUF_SIZE - idx, L"Parameter string: <<%s>>\n", lpszString);
+    idx += swprintf_s(strbuf + idx, STRBUF_SIZE - idx, L"Number of parameters: ");
+    nParamIdx = idx;
+    idx += 3;  // reserve space to backpatch nParams (2 digits + newline)
+    for (int i = 0; i < MAX_PARAMS; i++) {
         if (NthArgument(lpszString, i, argbuf, NULL) != NULL) {
             StripEnclosingQuotes(argbuf);
             EscapeLine(argbuf);
-            SAPPEND(swprintf_s(strbuf + idx, remaining,  L"Arg %d <<%s>>\n", i + 1, argbuf));
+            idx += swprintf_s(strbuf + idx, STRBUF_SIZE - idx,  L"Arg %d: <<%s>>\n", i + 1, argbuf);
+            nParams++;
         } else {
             break;
         }
     }
-    Printf(L"%s", strbuf);
+    swprintf(argbuf, 4, L"%-2d\n", nParams);  // we use 4 because of the NULL terminator
+    for (int i = 0; i < 3; i++)
+        strbuf[nParamIdx + i] = argbuf[i];
+    _putws(strbuf);
     wcscpy_s(lpszString, MAX_FUNCSTR_SIZE, L"Swizzle!");
     return 0;
 }
