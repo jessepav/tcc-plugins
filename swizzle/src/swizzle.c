@@ -72,9 +72,9 @@ PLUGIN_API INT WINAPI f_swizzle(LPTSTR lpszString) {
         }
     }
     swprintf(argbuf, 4, L"%-2d\n", nParams);  // we use 4 because of the NULL terminator
-    for (int i = 0; i < 3; i++)
-        strbuf[nParamIdx + i] = argbuf[i];
-    _putws(strbuf);
+    wmemcpy(strbuf + nParamIdx, argbuf, 3);
+    strbuf[idx] = L'\0'; // if nParams == 0, the string might not be NULL-terminated
+    fputws(strbuf, stdout);
     wcscpy_s(lpszString, MAX_FUNCSTR_SIZE, L"Swizzle!");
     return 0;
 }
