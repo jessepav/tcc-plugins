@@ -1,4 +1,11 @@
+# Note that this project requires MSVC and a single-config generator (Makefiles or Ninja) to build.
+
 cmake_minimum_required(VERSION 3.21)
+
+if(NOT CMAKE_BUILD_TYPE)
+    message(NOTICE "Setting CMAKE_BUILD_TYPE to Release")
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
 project(tccswizzle LANGUAGES C)
 
