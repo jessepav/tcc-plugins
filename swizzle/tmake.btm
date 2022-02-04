@@ -1,0 +1,99 @@
+@echo off
+
+setlocal
+
+set CMD=%1
+shift 1
+
+SWITCH %CMD
+CASE file
+  GOSUB FileUpToDate %$
+  set u=%_?
+  echos %2 is ``
+  IF %u == 0 (echos up-to-date) ELSE (echos NOT up-to-date)
+  echo  with respect to %1
+CASE dir
+  GOSUB OutOfDateFiles %$
+  IFF %_? == 0 THEN
+    ECHO ``
+    ECHO Out-of-date destination files:
+    ECHO %OUTOFDATE_DEST_FILES
+    ECHO ``
+    ECHO Newer source files:
+    ECHO %NEWER_SOURCE_FILES
+  ELSE
+    ECHO No files out-of-date.
+  ENDIFF
+ENDSWITCH
+
+QUIT
+
+rem ------------------------------------------------------------
+rem ------------------ SUBROUTINES  ----------------------------
+rem ------------------------------------------------------------
+
+COMMENT
+-------------------------------------------------------------------
+Tests whether file 'dest' is up-to-date with respect to file 'src'.
+%_? is set to 0 if so, or 1 if not
+-------------------------------------------------------------------
+ENDCOMMENT
+:FileUpToDate [src dest]
+IFF NOT ISFILE %src THEN
+  RETURN 0
+ELSEIFF NOT ISFILE %dest THEN
+  RETURN 1
+ELSEIFF %@FILEAGE[%src] GT %@FILEAGE[%dest] THEN
+  RETURN 1
+ELSE
+  RETURN 0
+ENDIFF
+
+COMMENT
+-------------------------------------------------------------------
+Gathers a list of out-of-date files.
+  srcdir - source directory
+  srcfiles - semicolon-separated list of files, relative to srcdir
+  desttype - either "dir" or "file"
+  dest - either a destination directory or file, depending on the value of desttype
+  remapext - if desttype is "dir", the extensions of srcfiles will be replaced by
+             remapext when performing the up-to-date check. Include the "." when
+             passing remapext (ex. ".obj").
+
+The sub sets %_? to 0 if any destination files are out-of-date, and to 1 otherwise.
+If %_? is 0, then the NEWER_SOURCE_FILES environment variable will be set to a
+semicolon-delimited list of those *source* files that are *newer* than their 
+corresponding destination file, and OUTOFDATE_DEST_FILES will be set to the
+list of destination files that are older than their corresponding source file.
+Note that the filenames in these lists may or may not actually exist.
+
+All filenames in these lists will not be surrounded by double-quotes.
+-------------------------------------------------------------------
+ENDCOMMENT
+:OutOfDateFiles [srcdir srcfiles desttype dest remapext]
+SET _srcdir=%@RTRIM[\,%@UNQUOTES[%srcdir]]
+IFF %desttype == dir THEN set destdir=%@RTRIM[\,%@UNQUOTES[%dest]]
+ELSEIFF %desttype == file THEN set destfile=%dest
+ENDIFF
+DO file IN /T";" /L %@UNQUOTES[%srcfiles]
+  set file=%@UNQUOTES[%@trim[%file]]
+  IF %@LEN[%file] == 0 ITERATE
+  set srcfile=%_srcdir\%file
+  ECHOS Checking %srcfile against ``
+  IF %desttype == dir SET destfile=%destdir\%@PATH["%file"]%@NAME["%file"]%remapext
+  ECHO %destfile
+  GOSUB FileUpToDate "%srcfile" "%destfile"
+  IFF %_? == 1 THEN
+    set NEWER_SOURCE_FILES=%NEWER_SOURCE_FILES;%srcfile
+    set OUTOFDATE_DEST_FILES=%OUTOFDATE_DEST_FILES;%destfile
+  ENDIFF
+ENDDO
+IFF %@LEN[%NEWER_SOURCE_FILES] != 0 THEN
+  SET NEWER_SOURCE_FILES=%@LTRIM[;,%NEWER_SOURCE_FILES]
+  SET OUTOFDATE_DEST_FILES=%@LTRIM[;,%OUTOFDATE_DEST_FILES]
+  return 0
+ELSE
+  RETURN 1
+ENDIFF
+
+endlocal
