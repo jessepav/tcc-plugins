@@ -52,13 +52,15 @@ ENDIFF
 COMMENT
 -------------------------------------------------------------------
 Gathers a list of out-of-date files.
-  srcdir - source directory
+    srcdir - source directory
   srcfiles - semicolon-separated list of files, relative to srcdir
   desttype - either "dir" or "file"
-  dest - either a destination directory or file, depending on the value of desttype
+      dest - either a destination directory or file, depending on the value of desttype
   remapext - if desttype is "dir", the extensions of srcfiles will be replaced by
              remapext when performing the up-to-date check. Include the "." when
              passing remapext (ex. ".obj").
+     force - if set to 1, then no timestamp comparisons will performed, and files will
+             always be considered out-of-date.
 
 The sub sets %_? to 0 if any destination files are out-of-date, and to 1 otherwise.
 If %_? is 0, then the NEWER_SOURCE_FILES environment variable will be set to a
@@ -70,7 +72,7 @@ Note that the filenames in these lists may or may not actually exist.
 All filenames in these lists will not be surrounded by double-quotes.
 -------------------------------------------------------------------
 ENDCOMMENT
-:OutOfDateFiles [srcdir srcfiles desttype dest remapext]
+:OutOfDateFiles [srcdir srcfiles desttype dest remapext force]
 SET _srcdir=%@RTRIM[\,%@UNQUOTES[%srcdir]]
 IFF %desttype == dir THEN set destdir=%@RTRIM[\,%@UNQUOTES[%dest]]
 ELSEIFF %desttype == file THEN set destfile=%dest
@@ -82,10 +84,19 @@ DO file IN /T";" /L %@UNQUOTES[%srcfiles]
   ECHOS Checking %srcfile against ``
   IF %desttype == dir SET destfile=%destdir\%@PATH["%file"]%@NAME["%file"]%remapext
   ECHO %destfile
-  GOSUB FileUpToDate "%srcfile" "%destfile"
-  IFF %_? == 1 THEN
+  IFF %force == 1 THEN
+    set R=1
+  ELSE
+    GOSUB FileUpToDate "%srcfile" "%destfile"
+    set R=%_?
+  ENDIFF
+  IFF %R == 1 THEN
     set NEWER_SOURCE_FILES=%NEWER_SOURCE_FILES;%srcfile
-    set OUTOFDATE_DEST_FILES=%OUTOFDATE_DEST_FILES;%destfile
+    IFF %desttype == dir THEN
+      set OUTOFDATE_DEST_FILES=%OUTOFDATE_DEST_FILES;%destfile
+    ELSEIFF %desttype == file THEN
+      set OUTOFDATE_DEST_FILES=%destfile
+    ENDIFF
   ENDIFF
 ENDDO
 IFF %@LEN[%NEWER_SOURCE_FILES] != 0 THEN
