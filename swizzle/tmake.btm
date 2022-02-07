@@ -1,30 +1,113 @@
 @echo off
 
 setlocal
+rem ============================================================
 
-set CMD=%1
-shift 1
+set PROJECT_NAME=swizzle
 
-SWITCH %CMD
-CASE file
-  GOSUB FileUpToDate %$
-  set u=%_?
-  echos %2 is ``
-  IF %u == 0 (echos up-to-date) ELSE (echos NOT up-to-date)
-  echo  with respect to %1
-CASE dir
-  GOSUB OutOfDateFiles %$
-  IFF %_? == 0 THEN
-    ECHO ``
-    ECHO Out-of-date destination files:
-    ECHO %OUTOFDATE_DEST_FILES
-    ECHO ``
-    ECHO Newer source files:
-    ECHO %NEWER_SOURCE_FILES
-  ELSE
-    ECHO No files out-of-date.
-  ENDIFF
-ENDSWITCH
+set SCRIPT_DIR=%@LEFT[-1,%@PATH["%_batchname"]]
+set BUILD_DIR=%SCRIPT_DIR\build\tmake
+set SOURCE_DIR=%SCRIPT_DIR\src
+
+rem Semicolon-delimited, relative to SOURCE_DIR
+set SOURCE_FILES=swizzle.c
+
+set PCH_HEADER=pch.h
+set PCH_SOURCE=pch.c
+set PCH_FILE=%BUILD_DIR\obj\%PROJECT_NAME.pch
+set PCH_CREATE_FLAGS=`/Yc"pch.h" /Fp"%PCH_FILE%"`
+set PCH_USE_FLAGS=`/Yu"pch.h" /Fp"%PCH_FILE%"`
+
+rem Note the double backslash in the /Fo path
+set CL_CMD=`cl.exe /c /permissive- /GS- /sdl- /Gy- /Zc:wchar_t /Zc:forScope /Ox /Oi` ^
+           `/D "NDEBUG" /D "_WINDOWS" /D "_USRDLL" /D "_WINDLL" /D "_UNICODE" /D "UNICODE"` ^
+           `/W3 /WX /wd"5105" /std:c11 /Gd /MD /Fo"%BUILD_DIR%\obj\\" %PCH_FLAGS /diagnostics:column` ^
+           `/nologo %SRC_FILES`
+
+set LINK_CMD=`link.exe /SUBSYSTEM:WINDOWS /NXCOMPAT /DYNAMICBASE /MACHINE:X64 /OPT:REF /INCREMENTAL:NO` ^
+             `/OUT:"%BUILD_DIR\out\%PROJECT_NAME.dll" /IMPLIB:"%BUILD_DIR\out\%PROJECT_NAME.lib" /DLL` ^
+             `/MANIFESTUAC:NO /MANIFEST /ManifestFile:"%BUILD_DIR\out\%PROJECT_NAME.dll.manifest"` ^
+             `/LIBPATH:"%SCRIPT_DIR\lib"` ^
+             `"TakeCmd.lib" "kernel32.lib" "user32.lib" "gdi32.lib" "advapi32.lib"` ^
+             `/nologo %OBJ_FILES`
+
+rem Parse command line
+set VERBOSE=0
+set DEBUG=0
+set FORCE=0
+
+IF %@PARSE[".",/V,0] != 0 set VERBOSE=1
+IF %@PARSE[".",/D,0] != 0 set DEBUG=1
+IF %@PARSE[".",/F,0] != 0 set FORCE=1
+
+IFF %@PARSE[".",/?,0] != 0 THEN
+TEXT
+Usage: tmake.btm [/V] [/D] [/F]
+
+/V = verbose output
+/D = debug mode
+/F = force rebuild
+/C = clean build directory
+ENDTEXT
+QUIT
+ENDIFF
+
+IFF %@PARSE[".",/C,0] != 0 THEN
+  rmdir /Q /S "%BUILD_DIR"
+  quit
+ENDIFF
+
+rem Create necessary directories
+IF NOT ISDIR "%BUILD_DIR\obj" (IF %VERBOSE == 1 echo Creating "%BUILD_DIR\obj"... & mkdir /S "%BUILD_DIR\obj")
+IF NOT ISDIR "%BUILD_DIR\out" (IF %VERBOSE == 1 echo Creating "%BUILD_DIR\out"... & mkdir /S "%BUILD_DIR\out")
+             
+rem First we build the PCH file
+gosub OutOfDateFiles "%SOURCE_DIR" "%PCH_HEADER;%PCH_SOURCE" file "%PCH_FILE" none %FORCE
+IFF %_? == 0 THEN
+  set SRC_FILES=%SOURCE_DIR\%PCH_SOURCE
+  set PCH_FLAGS=%PCH_CREATE_FLAGS
+  IF %VERBOSE == 1 echo %CL_CMD
+  %CL_CMD
+  if %? NEQ 0 QUIT
+ENDIFF
+
+rem Then compile source files
+GOSUB OutOfDateFiles "%SOURCE_DIR" "%SOURCE_FILES" dir "%BUILD_DIR\obj" .obj %FORCE
+IFF %_? == 0 THEN
+  set TMPFILE="%@UNIQUE["%BUILD_DIR",CL]"
+  gosub WritePathEntries %TMPFILE %NEWER_SOURCE_FILES
+  set SRC_FILES=@%TMPFILE
+  set PCH_FLAGS=%PCH_USE_FLAGS
+  IF %VERBOSE EQ 1 echo %CL_CMD
+  %CL_CMD
+  if %? NEQ 0 QUIT
+  IF %DEBUG NEQ 1 del /Q %TMPFILE
+ENDIFF
+
+rem Gather a list of object files that were built from source files.
+set OBJ_FILES=
+DO file IN /T";" /L %SOURCE_FILES%
+  GOSUB PathAppend OBJ_FILES %@NAME[%file].obj
+ENDDO
+GOSUB OutOfDateFiles "%BUILD_DIR\obj" "%OBJ_FILES" file "%BUILD_DIR\out\%PROJECT_NAME.dll" none %FORCE
+IFF %_? EQ 0 THEN
+  rem Remember to add the PCH .obj file!
+  set OBJ_FILES=%@NAME[%PCH_SOURCE].obj;%OBJ_FILES
+  
+  rem Prepend the object directory to each object file name
+  DO entry IN /T";" /L %OBJ_FILES
+    GOSUB PathAppend OBJPATHS %BUILD_DIR\obj\%entry
+  ENDDO
+  
+  rem Run link with a command file
+  set TMPFILE="%@UNIQUE["%BUILD_DIR",LN1]"
+  gosub WritePathEntries %TMPFILE %OBJPATHS
+  set OBJ_FILES=@%TMPFILE
+  IF %VERBOSE EQ 1 echo %LINK_CMD
+  %LINK_CMD
+  if %? NEQ 0 QUIT
+  IF %DEBUG NEQ 1 del /Q %TMPFILE
+ENDIFF
 
 QUIT
 
@@ -77,13 +160,14 @@ SET _srcdir=%@RTRIM[\,%@UNQUOTES[%srcdir]]
 IFF %desttype == dir THEN set destdir=%@RTRIM[\,%@UNQUOTES[%dest]]
 ELSEIFF %desttype == file THEN set destfile=%dest
 ENDIFF
-DO file IN /T";" /L %@UNQUOTES[%srcfiles]
-  set file=%@UNQUOTES[%@trim[%file]]
-  IF %@LEN[%file] == 0 ITERATE
-  set srcfile=%_srcdir\%file
-  ECHOS Checking %srcfile against ``
-  IF %desttype == dir SET destfile=%destdir\%@PATH["%file"]%@NAME["%file"]%remapext
-  ECHO %destfile
+unset NEWER_SOURCE_FILES OUTOFDATE_DEST_FILES
+DO _file IN /T";" /L %@UNQUOTES[%srcfiles]
+  set _file=%@UNQUOTES[%@trim[%_file]]
+  IF %@LEN[%_file] == 0 ITERATE
+  set srcfile=%_srcdir\%_file
+  IF %VERBOSE EQ true ECHOS Checking %srcfile against ``
+  IF %desttype == dir SET destfile=%destdir\%@PATH["%_file"]%@NAME["%_file"]%remapext
+  IF %VERBOSE EQ true ECHO %destfile
   IFF %force == 1 THEN
     set R=1
   ELSE
@@ -99,6 +183,7 @@ DO file IN /T";" /L %@UNQUOTES[%srcfiles]
     ENDIFF
   ENDIFF
 ENDDO
+unset _file
 IFF %@LEN[%NEWER_SOURCE_FILES] != 0 THEN
   SET NEWER_SOURCE_FILES=%@LTRIM[;,%NEWER_SOURCE_FILES]
   SET OUTOFDATE_DEST_FILES=%@LTRIM[;,%OUTOFDATE_DEST_FILES]
@@ -107,4 +192,25 @@ ELSE
   RETURN 1
 ENDIFF
 
+COMMENT
+Write the entries in a given semicolon-delimited path to a text file.
+ENDCOMMENT
+:WritePathEntries [outputfile pathentries*]
+set _handle=%@FILEOPEN[%outputfile,write,t]
+DO _entry IN /T";" /L %pathentries
+  echo %@FILEWRITE[%_handle,%_entry] > NUL
+ENDDO
+echo %@FILECLOSE[%_handle] > NUL
+unset _entry _handle
+RETURN
+
+COMMENT
+Append an entry to a path-like structure.
+ENDCOMMENT
+:PathAppend [varname entry*]
+IF %@LEN[%[%varname]] != 0 set %varname=%[%varname];
+set %varname=%[%varname]%entry
+return
+
+rem ============================================================
 endlocal
