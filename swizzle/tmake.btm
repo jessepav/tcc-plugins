@@ -35,29 +35,21 @@ rem Parse command line
 set VERBOSE=0
 set DEBUG=0
 set FORCE=0
-set USEPCH=1
+set USEPCH=0
 
-IF %@PARSE[".",/V,0] != 0 set VERBOSE=1
-IF %@PARSE[".",/D,0] != 0 set DEBUG=1
-IF %@PARSE[".",/F,0] != 0 set FORCE=1
-IF %@PARSE[".",/P,0] == /P- set USEPCH=0
-
-IFF %@PARSE[".",/?,0] != 0 THEN
-TEXT
-Usage: tmake.btm [/V] [/D] [/F]
-
-/V = verbose output
-/D = debug mode
-/F = force rebuild
-/C = clean build directory
-/P[+|-] = enable/disable PCH
-ENDTEXT
-QUIT
-ENDIFF
-
-IFF %@PARSE[".",/C,0] != 0 THEN
-  rmdir /Q /S "%BUILD_DIR"
-  quit
+IFF %# NEQ 0 THEN
+  DO arg IN /Q %*
+    IF %arg == /V (set VERBOSE=1 & ITERATE)
+    IF %arg == /D (set DEBUG=1 & ITERATE)
+    IF %arg == /F (set FORCE=1 & ITERATE)
+    IF %arg == /P- (set USBPCH=0 & ITERATE)
+    IF %arg == /P+ (set USBPCH=1 & ITERATE)
+    IF %arg == /C (echo Cleaning build dir... & rmdir /Q /S "%BUILD_DIR" & quit)
+    
+    IF %arg == /? (GOSUB ShowHelp & QUIT)
+    
+    echo Unrecognized argument: "%arg" & QUIT
+  ENDDO
 ENDIFF
 
 rem Create necessary directories
@@ -73,6 +65,8 @@ IFF %USEPCH == 1 THEN
     IF %VERBOSE == 1 echo %CL_CMD
     %CL_CMD
     if %? NEQ 0 QUIT
+  ELSEIFF %VERBOSE == 1 THEN
+    echo PCH is up-to-date.
   ENDIFF
 ENDIFF
 
@@ -87,6 +81,8 @@ IFF %_? == 0 THEN
   %CL_CMD
   if %? NEQ 0 QUIT
   IF %DEBUG NEQ 1 del /Q %TMPFILE
+ELSEIFF %VERBOSE == 1 THEN
+  echo Object files are up-to-date.
 ENDIFF
 
 rem Gather a list of object files that were built from source files.
@@ -112,6 +108,8 @@ IFF %_? EQ 0 THEN
   %LINK_CMD
   if %? NEQ 0 QUIT
   IF %DEBUG NEQ 1 del /Q %TMPFILE
+ELSEIFF %VERBOSE == 1 THEN
+  echo Output file is up-to-date.
 ENDIFF
 
 QUIT
@@ -210,6 +208,18 @@ ENDCOMMENT
 IF %@LEN[%[%varname_]] != 0 set %varname_=%[%varname_];
 set %varname_=%[%varname_]%entry_
 return
+
+:ShowHelp
+TEXT
+Usage: tmake.btm [/V] [/D] [/F]
+
+/V = verbose output
+/D = debug mode
+/F = force rebuild
+/C = clean build directory
+/P[+|-] = enable/disable PCH
+ENDTEXT
+RETURN
 
 rem ============================================================
 endlocal
