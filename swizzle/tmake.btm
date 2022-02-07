@@ -96,12 +96,12 @@ IFF %_? EQ 0 THEN
   
   rem Prepend the object directory to each object file name
   DO entry IN /T";" /L %OBJ_FILES
-    GOSUB PathAppend OBJPATHS %BUILD_DIR\obj\%entry
+    GOSUB PathAppend PATHENTRIES %BUILD_DIR\obj\%entry
   ENDDO
   
   rem Run link with a command file
   set TMPFILE="%@UNIQUE["%BUILD_DIR",LN1]"
-  gosub WritePathEntries %TMPFILE %OBJPATHS
+  gosub WritePathEntries %TMPFILE %PATHENTRIES
   set OBJ_FILES=@%TMPFILE
   IF %VERBOSE EQ 1 echo %LINK_CMD
   %LINK_CMD
@@ -117,16 +117,16 @@ rem ------------------------------------------------------------
 
 COMMENT
 -------------------------------------------------------------------
-Tests whether file 'dest' is up-to-date with respect to file 'src'.
+Tests whether file 'dest_' is up-to-date with respect to file 'src_'.
 %_? is set to 0 if so, or 1 if not
 -------------------------------------------------------------------
 ENDCOMMENT
-:FileUpToDate [src dest]
-IFF NOT ISFILE %src THEN
+:FileUpToDate [src_ dest_]
+IFF NOT ISFILE %src_ THEN
   RETURN 0
-ELSEIFF NOT ISFILE %dest THEN
+ELSEIFF NOT ISFILE %dest_ THEN
   RETURN 1
-ELSEIFF %@FILEAGE[%src] GT %@FILEAGE[%dest] THEN
+ELSEIFF %@FILEAGE[%src_] GT %@FILEAGE[%dest_] THEN
   RETURN 1
 ELSE
   RETURN 0
@@ -135,14 +135,14 @@ ENDIFF
 COMMENT
 -------------------------------------------------------------------
 Gathers a list of out-of-date files.
-    srcdir - source directory
-  srcfiles - semicolon-separated list of files, relative to srcdir
-  desttype - either "dir" or "file"
-      dest - either a destination directory or file, depending on the value of desttype
-  remapext - if desttype is "dir", the extensions of srcfiles will be replaced by
-             remapext when performing the up-to-date check. Include the "." when
-             passing remapext (ex. ".obj").
-     force - if set to 1, then no timestamp comparisons will performed, and files will
+    srcdir_ - source directory
+  srcfiles_ - semicolon-separated list of files, relative to srcdir
+  desttype_ - either "dir" or "file"
+      dest_ - either a destination directory or file, depending on the value of desttype
+  remapext_ - if desttype is "dir", the extensions of srcfiles will be replaced by
+              remapext when performing the up-to-date check. Include the "." when
+              passing remapext (ex. ".obj").
+     force_ - if set to 1, then no timestamp comparisons will performed, and files will
              always be considered out-of-date.
 
 The sub sets %_? to 0 if any destination files are out-of-date, and to 1 otherwise.
@@ -155,49 +155,43 @@ Note that the filenames in these lists may or may not actually exist.
 All filenames in these lists will not be surrounded by double-quotes.
 -------------------------------------------------------------------
 ENDCOMMENT
-:OutOfDateFiles [srcdir srcfiles desttype dest remapext force]
-SET _srcdir=%@RTRIM[\,%@UNQUOTES[%srcdir]]
-IFF %desttype == dir THEN set destdir=%@RTRIM[\,%@UNQUOTES[%dest]]
-ELSEIFF %desttype == file THEN set destfile=%dest
+:OutOfDateFiles [srcdir_ srcfiles_ desttype_ dest_ remapext_ force_]
+SET _srcdir=%@RTRIM[\,%@UNQUOTES[%srcdir_]]
+IFF %desttype_ == dir THEN set _destdir=%@RTRIM[\,%@UNQUOTES[%dest_]]
+ELSEIFF %desttype_ == file THEN set _destfile=%dest_
 ENDIFF
 unset NEWER_SOURCE_FILES OUTOFDATE_DEST_FILES
-DO _file IN /T";" /L %@UNQUOTES[%srcfiles]
+DO _file IN /T";" /L %@UNQUOTES[%srcfiles_]
   set _file=%@UNQUOTES[%@trim[%_file]]
   IF %@LEN[%_file] == 0 ITERATE
-  set srcfile=%_srcdir\%_file
-  IF %VERBOSE EQ true ECHOS Checking %srcfile against ``
-  IF %desttype == dir SET destfile=%destdir\%@PATH["%_file"]%@NAME["%_file"]%remapext
-  IF %VERBOSE EQ true ECHO %destfile
-  IFF %force == 1 THEN
-    set R=1
+  set _srcfile=%_srcdir\%_file
+  IF %VERBOSE EQ true ECHOS Checking %_srcfile against ``
+  IF %desttype_ == dir SET _destfile=%_destdir\%@PATH["%_file"]%@NAME["%_file"]%remapext_
+  IF %VERBOSE EQ true ECHO %_destfile
+  IFF %force_ == 1 THEN
+    set _R=1
   ELSE
-    GOSUB FileUpToDate "%srcfile" "%destfile"
-    set R=%_?
+    GOSUB FileUpToDate "%_srcfile" "%_destfile"
+    set _R=%_?
   ENDIFF
-  IFF %R == 1 THEN
-    set NEWER_SOURCE_FILES=%NEWER_SOURCE_FILES;%srcfile
-    IFF %desttype == dir THEN
-      set OUTOFDATE_DEST_FILES=%OUTOFDATE_DEST_FILES;%destfile
-    ELSEIFF %desttype == file THEN
-      set OUTOFDATE_DEST_FILES=%destfile
+  IFF %_R == 1 THEN
+    GOSUB PathAppend NEWER_SOURCE_FILES %_srcfile
+    IFF %desttype_ == dir THEN
+      GOSUB PathAppend OUTOFDATE_DEST_FILES %_destfile
+    ELSEIFF %desttype_ == file THEN
+      set OUTOFDATE_DEST_FILES=%_destfile
     ENDIFF
   ENDIFF
 ENDDO
-unset _file
-IFF %@LEN[%NEWER_SOURCE_FILES] != 0 THEN
-  SET NEWER_SOURCE_FILES=%@LTRIM[;,%NEWER_SOURCE_FILES]
-  SET OUTOFDATE_DEST_FILES=%@LTRIM[;,%OUTOFDATE_DEST_FILES]
-  return 0
-ELSE
-  RETURN 1
-ENDIFF
+unset _file _srcdir _srcfile _destdir _destfile _R
+RETURN @IF[%@LEN[%NEWER_SOURCE_FILES] != 0,0,1]
 
 COMMENT
 Write the entries in a given semicolon-delimited path to a text file.
 ENDCOMMENT
-:WritePathEntries [outputfile pathentries*]
-set _handle=%@FILEOPEN[%outputfile,write,t]
-DO _entry IN /T";" /L %pathentries
+:WritePathEntries [outputFile_ pathEntries_*]
+set _handle=%@FILEOPEN[%outputFile_,write,t]
+DO _entry IN /T";" /L %pathEntries_
   echo %@FILEWRITE[%_handle,%_entry] > NUL
 ENDDO
 echo %@FILECLOSE[%_handle] > NUL
@@ -207,9 +201,9 @@ RETURN
 COMMENT
 Append an entry to a path-like structure.
 ENDCOMMENT
-:PathAppend [varname entry*]
-IF %@LEN[%[%varname]] != 0 set %varname=%[%varname];
-set %varname=%[%varname]%entry
+:PathAppend [varname_ entry_*]
+IF %@LEN[%[%varname_]] != 0 set %varname_=%[%varname_];
+set %varname_=%[%varname_]%entry_
 return
 
 rem ============================================================
