@@ -35,10 +35,12 @@ rem Parse command line
 set VERBOSE=0
 set DEBUG=0
 set FORCE=0
+set USEPCH=1
 
 IF %@PARSE[".",/V,0] != 0 set VERBOSE=1
 IF %@PARSE[".",/D,0] != 0 set DEBUG=1
 IF %@PARSE[".",/F,0] != 0 set FORCE=1
+IF %@PARSE[".",/P,0] == /P- set USEPCH=0
 
 IFF %@PARSE[".",/?,0] != 0 THEN
 TEXT
@@ -48,6 +50,7 @@ Usage: tmake.btm [/V] [/D] [/F]
 /D = debug mode
 /F = force rebuild
 /C = clean build directory
+/P[+|-] = enable/disable PCH
 ENDTEXT
 QUIT
 ENDIFF
@@ -62,13 +65,15 @@ IF NOT ISDIR "%BUILD_DIR\obj" (IF %VERBOSE == 1 echo Creating "%BUILD_DIR\obj"..
 IF NOT ISDIR "%BUILD_DIR\out" (IF %VERBOSE == 1 echo Creating "%BUILD_DIR\out"... & mkdir /S "%BUILD_DIR\out")
              
 rem First we build the PCH file
-gosub OutOfDateFiles "%SOURCE_DIR" "%PCH_HEADER;%PCH_SOURCE" file "%PCH_FILE" none %FORCE
-IFF %_? == 0 THEN
-  set SRC_FILES=%SOURCE_DIR\%PCH_SOURCE
-  set PCH_FLAGS=%PCH_CREATE_FLAGS
-  IF %VERBOSE == 1 echo %CL_CMD
-  %CL_CMD
-  if %? NEQ 0 QUIT
+IFF %USEPCH == 1 THEN
+  gosub OutOfDateFiles "%SOURCE_DIR" "%PCH_HEADER;%PCH_SOURCE" file "%PCH_FILE" none %FORCE
+  IFF %_? == 0 THEN
+    set SRC_FILES=%SOURCE_DIR\%PCH_SOURCE
+    set PCH_FLAGS=%PCH_CREATE_FLAGS
+    IF %VERBOSE == 1 echo %CL_CMD
+    %CL_CMD
+    if %? NEQ 0 QUIT
+  ENDIFF
 ENDIFF
 
 rem Then compile source files
@@ -77,7 +82,7 @@ IFF %_? == 0 THEN
   set TMPFILE="%@UNIQUE["%BUILD_DIR",CL]"
   gosub WritePathEntries %TMPFILE %NEWER_SOURCE_FILES
   set SRC_FILES=@%TMPFILE
-  set PCH_FLAGS=%PCH_USE_FLAGS
+  IF %USEPCH == 1 (set PCH_FLAGS=%PCH_USE_FLAGS) ELSE (set PCH_FLAGS=)
   IF %VERBOSE EQ 1 echo %CL_CMD
   %CL_CMD
   if %? NEQ 0 QUIT
@@ -92,7 +97,7 @@ ENDDO
 GOSUB OutOfDateFiles "%BUILD_DIR\obj" "%OBJ_FILES" file "%BUILD_DIR\out\%PROJECT_NAME.dll" none %FORCE
 IFF %_? EQ 0 THEN
   rem Remember to add the PCH .obj file!
-  set OBJ_FILES=%@NAME[%PCH_SOURCE].obj;%OBJ_FILES
+  IF %USEPCH == 1 set OBJ_FILES=%@NAME[%PCH_SOURCE].obj;%OBJ_FILES
   
   rem Prepend the object directory to each object file name
   DO entry IN /T";" /L %OBJ_FILES
@@ -184,7 +189,7 @@ DO _file IN /T";" /L %@UNQUOTES[%srcfiles_]
   ENDIFF
 ENDDO
 unset _file _srcdir _srcfile _destdir _destfile _R
-RETURN @IF[%@LEN[%NEWER_SOURCE_FILES] != 0,0,1]
+RETURN %@IF[%@LEN[%NEWER_SOURCE_FILES] != 0,0,1]
 
 COMMENT
 Write the entries in a given semicolon-delimited path to a text file.
