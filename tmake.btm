@@ -231,7 +231,8 @@ return
 set _updated=0
 DO _header IN /P ffind /B /S "%SOURCE_DIR"\*.h;*.hpp
   rem Note that we're escaping the '.' for regex search
-  set _headerRegex=%@NAME[%_header].%@EXT[%_header]
+  set _headerRegex=%@NAME[%_header]\.%@EXT[%_header]
+  IF %VERBOSE==1 echo Scanning for header "%_header"
   DO _srcfile IN /T";" /L %SOURCE_FILES
     set _srcfile=%SOURCE_DIR\%_srcfile
     IFF %@LEN[%@EXECSTR[ffind /8 /F /B /E"(?i)#include.*%_headerRegex" "%_srcfile"]] != 0 THEN
@@ -246,14 +247,17 @@ RETURN
 
 :ShowHelp
 TEXT
-Usage: tmake.btm [/V] [/D] [/F]
+Usage: tmake.btm [project-file.btm] [/V] [/D] [/F] [/C] [/P+|-] [/H]
 
-/V      = verbose output
-/D      = debug mode
-/F      = force rebuild
-/C      = clean build directory
-/P[+|-] = enable/disable PCH
-/H      = scan header includes and update source timestamps
+project-file.btm contains project-specific properties. If not given, it defaults to
+"project.btm" in the current directory.
+
+/V    = verbose output
+/D    = debug mode
+/F    = force rebuild
+/C    = clean build directory
+/P+|- = enable/disable PCH
+/H    = scan header includes and update source timestamps
 ENDTEXT
 RETURN
 
