@@ -1,0 +1,29 @@
+<NotepadPlus>
+    <Project name="HashMap">
+        <Folder name="src">
+            <File name="hashmap\src\hashmap.c" />
+            <File name="hashmap\src\hashmap.h" />
+            <File name="hashmap\src\pch.c" />
+            <File name="hashmap\src\pch.h" />
+            <File name="hashmap\src\PlugIn.h" />
+            <File name="hashmap\src\TakeCmd.h" />
+            <File name="hashmap\src\tcchashmap.c" />
+        </Folder>
+        <File name="hashmap\project.btm" />
+    </Project>
+    <Project name="Swizzle">
+        <Folder name="src">
+            <File name="swizzle\src\functions.c" />
+            <File name="swizzle\src\pch.c" />
+            <File name="swizzle\src\pch.h" />
+            <File name="swizzle\src\PlugIn.h" />
+            <File name="swizzle\src\swizzle.c" />
+            <File name="swizzle\src\swizzle.h" />
+            <File name="swizzle\src\TakeCmd.h" />
+        </Folder>
+        <File name="swizzle\project.btm" />
+    </Project>
+    <Project name="tmake">
+        <File name="tmake.btm" />
+    </Project>
+</NotepadPlus>
