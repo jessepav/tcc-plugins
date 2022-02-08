@@ -1,51 +1,64 @@
 @echo off
 
-setlocal
+SETLOCAL
 rem ============================================================
 
-set PROJECT_NAME=swizzle
-
 set SCRIPT_DIR=%@LEFT[-1,%@PATH["%_batchname"]]
-set BUILD_DIR=%SCRIPT_DIR\build\tmake
-set SOURCE_DIR=%SCRIPT_DIR\src
 
-:: Semicolon-delimited, relative to SOURCE_DIR
-set SOURCE_FILES=swizzle.c;functions.c
+IFF %# != 0 .AND. %@INSTR[0,1,%1] != / THEN
+    set PROJECT_FILE=%1
+    shift
+ELSE
+    set PROJECT_FILE=project.btm
+ENDIFF
+set PROJECT_FILE=%@FULL["%PROJECT_FILE"]
 
-set PCH_HEADER=pch.h
-set PCH_SOURCE=pch.c
-set PCH_FILE=%BUILD_DIR\obj\%PROJECT_NAME.pch
-set PCH_CREATE_FLAGS=`/Yc"pch.h" /Fp"%PCH_FILE%"`
-set PCH_USE_FLAGS=`/Yu"pch.h" /Fp"%PCH_FILE%"`
+IF NOT ISFILE "%PROJECT_FILE" (echo Project file "%PROJECT_FILE" not found! & QUIT)
 
-:: Note the double backslash in the /Fo path
-set CL_CMD=`cl.exe /c /permissive- /GS- /sdl- /Gy- /Zc:wchar_t /Zc:forScope /Ox /Oi` ^
-           `/D "NDEBUG" /D "_WINDOWS" /D "_USRDLL" /D "_WINDLL" /D "_UNICODE" /D "UNICODE"` ^
-           `/W3 /WX /wd"5105" /std:c11 /Gd /MD /Fo"%BUILD_DIR%\obj\\" %PCH_FLAGS /diagnostics:column` ^
-           `/nologo %SRC_FILES`
+set PROJECT_DIR=%@LEFT[-1,%@PATH["%PROJECT_FILE"]]
 
-set LINK_CMD=`link.exe /SUBSYSTEM:WINDOWS /NXCOMPAT /DYNAMICBASE /MACHINE:X64 /OPT:REF /INCREMENTAL:NO` ^
-             `/OUT:"%BUILD_DIR\out\%PROJECT_NAME.dll" /IMPLIB:"%BUILD_DIR\out\%PROJECT_NAME.lib" /DLL` ^
-             `/MANIFESTUAC:NO /MANIFEST /ManifestFile:"%BUILD_DIR\out\%PROJECT_NAME.dll.manifest"` ^
-             `/LIBPATH:"%SCRIPT_DIR\lib"` ^
-             `"TakeCmd.lib" "kernel32.lib" "user32.lib" "gdi32.lib" "advapi32.lib"` ^
-             `/nologo %OBJ_FILES`
+call "%PROJECT_FILE"
+
+IFF DEFINED PCH_HEADER .AND. DEFINED PCH_SOURCE THEN
+    set PCH_FILE=%BUILD_DIR\obj\%PROJECT_NAME.pch
+    set PCH_CREATE_FLAGS=`/Yc"%PCH_HEADER" /Fp"%PCH_FILE%"`
+    set PCH_USE_FLAGS=`/Yu"%PCH_HEADER" /Fp"%PCH_FILE%"`
+ENDIFF
+
+:: A project can override CL_CMD and LINK_CMD if desired
+IFF NOT DEFINED CL_CMD THEN
+    :: Note the double backslash in the /Fo path
+    set CL_CMD=`cl.exe /c /permissive- /GS- /sdl- /Gy- /Zc:wchar_t /Zc:forScope /Ox /Oi` ^
+               `/D "NDEBUG" /D "_WINDOWS" /D "_USRDLL" /D "_WINDLL" /D "_UNICODE" /D "UNICODE"` ^
+               `/W3 /WX /wd"5105" /std:c11 /Gd /MD /Fo"%BUILD_DIR%\obj\\" %PCH_FLAGS /diagnostics:column` ^
+               `/nologo %SRC_FILES`
+ENDIFF
+
+IFF NOT DEFINED LINK_CMD THEN
+    set LINK_CMD=`link.exe /SUBSYSTEM:WINDOWS /NXCOMPAT /DYNAMICBASE /MACHINE:X64 /OPT:REF /INCREMENTAL:NO` ^
+                 `/OUT:"%BUILD_DIR\out\%PROJECT_NAME.dll" /IMPLIB:"%BUILD_DIR\out\%PROJECT_NAME.lib" /DLL` ^
+                 `/MANIFESTUAC:NO /MANIFEST /ManifestFile:"%BUILD_DIR\out\%PROJECT_NAME.dll.manifest"` ^
+                 `/LIBPATH:"%PROJECT_DIR\lib"` ^
+                 `"TakeCmd.lib" "kernel32.lib" "user32.lib" "gdi32.lib" "advapi32.lib"` ^
+                 `/nologo %OBJ_FILES`
+ENDIFF
 
 set VERBOSE=0
 set DEBUG=0
 set FORCE=0
+set USEPCH=0
 
 :: If a PCH was generated on a previous build, use it by default
-set USEPCH=%@IF[ISFILE "%PCH_FILE",1,0]
+IF DEFINED PCH_FILE .AND. ISFILE "%PCH_FILE" set USEPCH=1
 
 :: Parse command line
 IFF %# NEQ 0 THEN
-  DO arg IN /Q %*
+  DO arg IN /Q %$
     IF %arg == /V (set VERBOSE=1 & ITERATE)
     IF %arg == /D (set DEBUG=1 & ITERATE)
     IF %arg == /F (set FORCE=1 & ITERATE)
     IF %arg == /P- (set USEPCH=0 & ITERATE)
-    IF %arg == /P+ (set USEPCH=1 & ITERATE)
+    IF %arg == /P+ (IF DEFINED PCH_FILE set USEPCH=1 & ITERATE)
     IF %arg == /C (echo Cleaning build dir... & rmdir /Q /S "%BUILD_DIR" & QUIT)
     IF %arg == /H (GOSUB ScanHeaders & QUIT)
     IF %arg == /? (GOSUB ShowHelp & QUIT)
@@ -67,6 +80,8 @@ IFF %USEPCH == 1 THEN
     IF %VERBOSE == 1 echo %CL_CMD
     %CL_CMD
     if %? NEQ 0 QUIT
+    :: We must rebuild everything if the PCH is updated
+    set FORCE=1  
   ELSEIFF %VERBOSE == 1 THEN
     echo PCH is up-to-date.
   ENDIFF
@@ -114,6 +129,7 @@ ELSEIFF %VERBOSE == 1 THEN
   echo Output file is up-to-date.
 ENDIFF
 
+:: And we're done!
 QUIT
 
 rem ------------------------------------------------------------
@@ -242,4 +258,4 @@ ENDTEXT
 RETURN
 
 rem ============================================================
-endlocal
+ENDLOCAL
