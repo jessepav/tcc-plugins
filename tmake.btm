@@ -241,6 +241,7 @@ DO _header IN /P ffind /B /S "%SOURCE_DIR"\*.h;*.hpp
     ENDIFF
   ENDDO
 ENDDO
+IF %VERBOSE==1 echo.
 IF %_updated == 0 echo No source files are older than their included source headers.
 unset _updated _header _headerRegex _srcfile
 RETURN
@@ -257,7 +258,7 @@ project-file.btm contains project-specific properties. If not given, it defaults
 /F    = force rebuild
 /C    = clean build directory
 /P+|- = enable/disable PCH
-/H    = scan header includes and update source timestamps
+/H    = scan header includes and update source timestamps.
 ENDTEXT
 RETURN
 
