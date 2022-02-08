@@ -9,7 +9,7 @@ set SCRIPT_DIR=%@LEFT[-1,%@PATH["%_batchname"]]
 set BUILD_DIR=%SCRIPT_DIR\build\tmake
 set SOURCE_DIR=%SCRIPT_DIR\src
 
-rem Semicolon-delimited, relative to SOURCE_DIR
+:: Semicolon-delimited, relative to SOURCE_DIR
 set SOURCE_FILES=swizzle.c;functions.c
 
 set PCH_HEADER=pch.h
@@ -18,7 +18,7 @@ set PCH_FILE=%BUILD_DIR\obj\%PROJECT_NAME.pch
 set PCH_CREATE_FLAGS=`/Yc"pch.h" /Fp"%PCH_FILE%"`
 set PCH_USE_FLAGS=`/Yu"pch.h" /Fp"%PCH_FILE%"`
 
-rem Note the double backslash in the /Fo path
+:: Note the double backslash in the /Fo path
 set CL_CMD=`cl.exe /c /permissive- /GS- /sdl- /Gy- /Zc:wchar_t /Zc:forScope /Ox /Oi` ^
            `/D "NDEBUG" /D "_WINDOWS" /D "_USRDLL" /D "_WINDLL" /D "_UNICODE" /D "UNICODE"` ^
            `/W3 /WX /wd"5105" /std:c11 /Gd /MD /Fo"%BUILD_DIR%\obj\\" %PCH_FLAGS /diagnostics:column` ^
@@ -31,12 +31,14 @@ set LINK_CMD=`link.exe /SUBSYSTEM:WINDOWS /NXCOMPAT /DYNAMICBASE /MACHINE:X64 /O
              `"TakeCmd.lib" "kernel32.lib" "user32.lib" "gdi32.lib" "advapi32.lib"` ^
              `/nologo %OBJ_FILES`
 
-rem Parse command line
 set VERBOSE=0
 set DEBUG=0
 set FORCE=0
-set USEPCH=0
 
+:: If a PCH was generated on a previous build, use it by default
+set USEPCH=%@IF[ISFILE "%PCH_FILE",1,0]
+
+:: Parse command line
 IFF %# NEQ 0 THEN
   DO arg IN /Q %*
     IF %arg == /V (set VERBOSE=1 & ITERATE)
