@@ -1,0 +1,16 @@
+:: Will be used for the output DLL
+set PROJECT_NAME=hashmap
+
+:: Where build files will be kept
+set BUILD_DIR=%PROJECT_DIR\build\tmake
+
+:: Root of the source hierarchy
+set SOURCE_DIR=%PROJECT_DIR\src
+
+:: Semicolon-delimited, relative to SOURCE_DIR
+set SOURCE_FILES=tcchashmap.c;hashmap.c
+
+:: To enable PCH usage, define these two variables; if omitted, PCH support is disabled
+:: Note that PCH_HEADER is a bare header name, and PCH_SOURCE is relative to SOURCE_DIR
+set PCH_HEADER=pch.h
+set PCH_SOURCE=pch.c
