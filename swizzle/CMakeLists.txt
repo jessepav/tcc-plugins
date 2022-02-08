@@ -18,6 +18,7 @@ set(CMAKE_C_STANDARD_LIBRARIES [["kernel32.lib" "user32.lib" "gdi32.lib" "advapi
 
 add_library(swizzle MODULE
     "src/swizzle.c"
+    "src/functions.c"
 )
 
 target_link_libraries(swizzle PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/lib/TakeCmd.lib")
