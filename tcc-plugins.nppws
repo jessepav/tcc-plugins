@@ -10,6 +10,7 @@
             <File name="hashmap\src\tcchashmap.c" />
         </Folder>
         <File name="hashmap\project.btm" />
+        <File name="hashmap\CMakeLists.txt" />
     </Project>
     <Project name="Swizzle">
         <Folder name="src">
@@ -22,6 +23,7 @@
             <File name="swizzle\src\TakeCmd.h" />
         </Folder>
         <File name="swizzle\project.btm" />
+        <File name="swizzle\CMakeLists.txt" />
     </Project>
     <Project name="tmake">
         <File name="tmake.btm" />
