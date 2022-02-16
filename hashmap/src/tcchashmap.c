@@ -161,12 +161,13 @@ PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
         wprintf(L"Usage: %%@hashget[handle,key]\n");
         return -1;
     }
-    struct map *map = parseHandle(paramStr, pcomma - paramStr - 1);
+    struct map *map = parseHandle(paramStr, pcomma - paramStr);
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
     }
     wchar_t *key = pcomma + 1;
+    DEBUG_PRINTF(L"map = %p, key = %s\n", map, key);
     struct entry *entry = hashmap_get(map->hashmap, &(struct entry){ .key=key });
     if (entry)
         wcscpy(paramStr, entry->value);
@@ -179,7 +180,7 @@ PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
     wchar_t *pcomma = wcsstr(paramStr, L",");
     if (!pcomma || pcomma == paramStr)
         goto paramError;
-    struct map *map = parseHandle(paramStr, pcomma - paramStr - 1);
+    struct map *map = parseHandle(paramStr, pcomma - paramStr);
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
