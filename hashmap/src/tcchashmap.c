@@ -38,7 +38,8 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
-        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear";
+        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear,"
+        L"hashentries";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
     piInfo.nBuild = 1;
@@ -94,12 +95,6 @@ static uint64_t entry_hash(const void *item, uint64_t seed0, uint64_t seed1) {
     return hashmap_sip(entry->key, wcslen(entry->key)*sizeof(wchar_t), seed0, seed1);
 }
 
-static bool entry_iter(const void *item, void *udata) {
-    const struct entry *entry = item;
-    // Empty for now
-    return true;  // false will stop iteration
-}
-
 static void entry_free(void *item) {
     const struct entry *entry = item;
     free(entry->key);  // there's only one allocated block - see f_hashput()
@@ -120,6 +115,7 @@ static struct map * parseHandle(LPTSTR handleStr, size_t length) {
     return map;
 }
 
+// Usage: %@hashnew[optional-delim]
 PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
     struct map *map = malloc(sizeof(struct map));
     map->hashmap = hashmap_new(sizeof(struct entry), 0, 0, 0,
@@ -158,7 +154,7 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
 PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
     wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr) {
-        wprintf(L"Usage: %%@hashget[handle,key[<delimiter>default_val]\n");
+        wprintf(L"Usage: %%@hashget[handle,key[<delimiter>default_val]]\n");
         return -1;
     }
     struct map *map = parseHandle(paramStr, pcomma - paramStr);
@@ -218,9 +214,65 @@ PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
+    wchar_t *pcomma = wcschr(paramStr, L',');
+    if (!pcomma || pcomma == paramStr) {
+        wprintf(L"Usage: %%@hashdel[handle,key]\n");
+        return -1;
+    }
+    struct map *map = parseHandle(paramStr, pcomma - paramStr);
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+        return -1;
+    }
+    wchar_t *key = pcomma + 1;
+    struct entry *entry = hashmap_delete(map->hashmap, &(struct entry){ .key=key });
+    if (entry) 
+        entry_free(entry);
+    paramStr[0] = L'\0';
     return 0;
 }
 
 PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
+    size_t len = wcslen(paramStr);
+    if (len == 0) {
+        wprintf(L"Usage: %%@hashclear[handle]\n");
+        return -1;
+    }
+    struct map *map = parseHandle(paramStr, len);
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+        return -1;
+    }
+    hashmap_clear(map->hashmap, true);
+    return 0;
+}
+
+// Used by hashentries()
+static bool entry_iter_print_entry(const void *item, void *udata) {
+    const struct entry *entry = item;
+    wchar_t *delim = udata;
+    fputws(entry->key, stdout);
+    fputws(delim, stdout);
+    fputws(entry->value, stdout);
+    fputwc(L'\n', stdout);
+    return true;
+}
+
+/*
+ * Prints a list of hash entries to stdout, one per line.
+ */
+PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
+    wchar_t *arg = argStr;
+    while (iswspace((wint_t) *arg)) arg++;  // Trim leading space
+    if (*arg == L'\0') {
+        wprintf(L"Usage: hashentries <handle>\n");
+        return -1;
+    }
+    struct map *map = parseHandle(arg, wcslen(arg));
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+        return -1;
+    }
+    hashmap_scan(map->hashmap, entry_iter_print_entry, map->delimiter);
     return 0;
 }
