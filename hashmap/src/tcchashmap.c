@@ -58,6 +58,37 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
     return 0;
 }
 
+// ===================================
+// Here begins the meat of the plugin.
+// ===================================
+
+struct map {
+    struct hashmap *hashmap;
+    wchar_t *delimiter;  // string delimiting arguments in TCC %@function[] calls
+};
+
+struct entry {
+    wchar_t *key;
+    wchar_t *value;
+};
+    
+static int entry_compare(const void *a, const void *b, void *udata) {
+    const struct entry *ea = a;
+    const struct entry *eb = b;
+    return wcscmp(ea->key, eb->key);
+}
+
+static uint64_t entry_hash(const void *item, uint64_t seed0, uint64_t seed1) {
+    const struct entry *entry = item;
+    return hashmap_sip(entry->key, wcslen(entry->key)*sizeof(wchar_t), seed0, seed1);
+}
+
+bool entry_iter(const void *item, void *udata) {
+    const struct entry *entry = item;
+    // Empty for now
+    return true;  // false will stop iteration
+}
+
 PLUGIN_API INT WINAPI f_hashmap(LPTSTR lpszString) {
     UINT idx = 0, nParamIdx;
     UINT nParams = 0;
