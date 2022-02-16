@@ -64,7 +64,7 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
 #define MAX_DELIMITER_LENGTH 8
 #define DEFAULT_DELIMITER L"/"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if DEBUG
     #define DEBUG_PRINTF(format, ...) fwprintf(stderr, format, __VA_ARGS__)
