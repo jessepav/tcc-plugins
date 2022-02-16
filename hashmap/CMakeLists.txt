@@ -9,7 +9,7 @@ endif()
 
 project(TCCHashmap LANGUAGES C)
 
-set(CL_OPTS_1 [[/DUNICODE /D_UNICODE /Gs- /W3 /wd"5105" /Gy- /Zc:wchar_t /Gm-]])
+set(CL_OPTS_1 [[/DUNICODE /D_UNICODE /Gs- /W3 /WX /wd"5105" /Gy- /Zc:wchar_t /Gm-]])
 set(CL_OPTS_2 [[/sdl- /Zc:inline /fp:precise /std:c11 /Gd /Oi]])
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CL_OPTS_1} ${CL_OPTS_2}")
 string(REPLACE "/O2" "/Ox" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
