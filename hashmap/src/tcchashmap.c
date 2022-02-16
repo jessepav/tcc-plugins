@@ -38,7 +38,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszEmail = (LPTSTR)L"jpavel@alum.mit.edu";
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
-    piInfo.pszFunctions = (LPTSTR)L"@hashmap";
+    piInfo.pszFunctions = (LPTSTR)L"@hashnew,@hashfree";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
     piInfo.nBuild = 1;
@@ -62,9 +62,12 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
 // Here begins the meat of the plugin.
 // ===================================
 
+#define MAX_DELIMITER_LENGTH 8
+#define DEFAULT_DELIMITER L"/"
+
 struct map {
     struct hashmap *hashmap;
-    wchar_t *delimiter;  // string delimiting arguments in TCC %@function[] calls
+    wchar_t delimiter[MAX_DELIMITER_LENGTH + 1];  // string delimiting arguments in TCC %@function[] calls
 };
 
 struct entry {
@@ -88,6 +91,41 @@ bool entry_iter(const void *item, void *udata) {
     // Empty for now
     return true;  // false will stop iteration
 }
+
+// Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
+// 'dest' should be large enough to hold at least 20 characters.
+static void getHandle(struct map *map, LPTSTR dest) {
+    swprintf(dest, 20, L"%p", map);
+}
+
+static struct map * parseHandle(LPTSTR handleStr) {
+    struct map *map = NULL;
+    swscanf(handleStr, L"%p", &map);
+    return map;
+}
+
+PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
+    struct map *map = malloc(sizeof(struct map));
+    map->hashmap = hashmap_new(sizeof(struct entry), 0, 0, 0,
+                               entry_hash, entry_compare, NULL, NULL);
+    wchar_t *delimiter = DEFAULT_DELIMITER;
+    wcsncpy(map->delimiter, delimiter, MAX_DELIMITER_LENGTH);
+    // It may be the case, if the length of delimiter >= MAX_DELIMITER_LENGTH,
+    // that a NULL is not appended, and so we terminate it manually.
+    map->delimiter[MAX_DELIMITER_LENGTH] = L'\0';
+    getHandle(map, paramStr);
+    return 0;
+}
+
+PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
+    struct map *map = parseHandle(paramStr);
+    Printf(L"Freeing the map at address %p", map);
+    hashmap_free(map->hashmap);
+    free(map);
+    return 0;
+}
+
+/* ================== Unused =================== */
 
 PLUGIN_API INT WINAPI f_hashmap(LPTSTR lpszString) {
     UINT idx = 0, nParamIdx;
