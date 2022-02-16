@@ -156,7 +156,7 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
-    wchar_t *pcomma = wcsstr(paramStr, L",");
+    wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr) {
         wprintf(L"Usage: %%@hashget[handle,key]\n");
         return -1;
@@ -177,7 +177,7 @@ PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
-    wchar_t *pcomma = wcsstr(paramStr, L",");
+    wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr)
         goto paramError;
     struct map *map = parseHandle(paramStr, pcomma - paramStr);
