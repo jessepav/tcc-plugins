@@ -38,7 +38,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
-        L"@hashnew,@hashfree,@hashget,@hashput";
+        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
     piInfo.nBuild = 1;
@@ -158,7 +158,7 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
 PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
     wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr) {
-        wprintf(L"Usage: %%@hashget[handle,key]\n");
+        wprintf(L"Usage: %%@hashget[handle,key[<delimiter>default_val]\n");
         return -1;
     }
     struct map *map = parseHandle(paramStr, pcomma - paramStr);
@@ -167,12 +167,17 @@ PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
         return -1;
     }
     wchar_t *key = pcomma + 1;
-    DEBUG_PRINTF(L"map = %p, key = %s\n", map, key);
+    wchar_t *defaultVal = L"";
+    wchar_t *pdelim = wcsstr(key, map->delimiter);
+    if (pdelim) {  // user supplied a default value
+        defaultVal = pdelim + wcslen(map->delimiter);
+        *pdelim = L'\0'; // null-terminate key
+    }
     struct entry *entry = hashmap_get(map->hashmap, &(struct entry){ .key=key });
     if (entry)
         wcscpy(paramStr, entry->value);
     else
-        paramStr[0] = L'\0';  // empty value
+        wcscpy(paramStr, defaultVal);
     return 0;
 }
 
@@ -210,4 +215,12 @@ PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
   paramError:
     wprintf(L"Usage: %%@hashput[handle,key<delimiter>value]\n");
     return -1;
+}
+
+PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
+    return 0;
+}
+
+PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
+    return 0;
 }
