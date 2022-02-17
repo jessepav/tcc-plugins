@@ -64,6 +64,8 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
 #define MAX_DELIMITER_LENGTH 8
 #define DEFAULT_DELIMITER L"/"
 
+#define MAX_HANDLE_LENGTH 21 // 20 characters + null
+
 #define DEBUG 0
 
 #if DEBUG
@@ -101,10 +103,10 @@ static void entry_free(void *item) {
 }
 
 // Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
-// 'dest' should be large enough to hold at least 20 characters.
+// 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
 static int writeHandleString(struct map *map, LPTSTR dest) {
-    return swprintf(dest, 20, L"%p", map);
+    return swprintf(dest, MAX_HANDLE_LENGTH, L"%p", map);
 }
 
 // Parses 'handleStr' and returns a pointer to the struct map represented by the handle
@@ -270,29 +272,29 @@ bool entry_iter_print_entry(const void *item, void *udata);
  * Prints a list of hash entries to stdout, one per line.
  */
 PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
-    LPWSTR *argv = NULL;
-
     while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
-    if (*argStr == L'\0')  // to avoid special behavior with CommandLineToArgvW()
-        goto argError;
+    if (*argStr == L'\0')   // to avoid special behavior with CommandLineToArgvW()
+        goto argError;      //    when passed an empty string
     
     int numArgs;
-    argv = CommandLineToArgvW(argStr, &numArgs);
-    if (argv == NULL)
-        goto argError;
-    
     bool argError = false;
-    LPWSTR handle = NULL;
+    WCHAR handle[MAX_HANDLE_LENGTH] = L"";
+
+    LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
+    if (argv == NULL) goto argError;
     for (int i = 0; i < numArgs; i++) {
-        if (wcslen(argv[i]) == 0) {
+        size_t arglen = wcslen(argv[i]);
+        if (arglen == 0) {
             argError = true;
         } else if (argv[i][0] == L'/') {
             // wprintf(L"Found flag '%s'\n", argv[i]);
-        } else {
-            handle = argv[i];
+        } else if (arglen < MAX_HANDLE_LENGTH) {
+            wcscpy(handle, argv[i]);
         }
     }
-    if (argError || !handle)
+    if (LocalFree(argv) != NULL)
+        fputws(L"hashmap: LocalFree failed\n", stderr);
+    if (argError || !wcslen(handle))
         goto argError;
     struct map *map = parseHandle(handle, wcslen(handle));
     if (map == NULL) {
@@ -300,11 +302,9 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     } else {
         hashmap_scan(map->hashmap, entry_iter_print_entry, map->delimiter);
     }
-    if (LocalFree(argv) != NULL) fputws(L"hashmap: LocalFree failed\n", stderr);
     return 0;
 
   argError:
-    if (argv && LocalFree(argv) != NULL) fputws(L"hashmap: LocalFree failed\n", stderr);
     _putws(L"Usage: hashentries <handle>");
     return -1;
 }
