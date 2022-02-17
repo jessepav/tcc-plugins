@@ -25,6 +25,7 @@ target_link_options(hashmap PUBLIC "/DYNAMICBASE" "/NXCOMPAT")
 set_target_properties(hashmap PROPERTIES
     VERSION 0.1
     OUTPUT_NAME hashmap
+    MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"  # an alternative is MultiThreaded for /MT
 )
 
 target_precompile_headers(hashmap PRIVATE "src/pch.h")
