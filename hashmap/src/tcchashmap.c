@@ -60,9 +60,11 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
 
 #define MAX_HANDLE_LENGTH 21 // 20 characters + null
 
-#define DEBUG 0
+#ifndef TCCHM_DEBUG
+    #define TCCHM_DEBUG 0
+#endif    
 
-#if DEBUG
+#if TCCHM_DEBUG
     #define DEBUG_PRINTF(format, ...) fwprintf(stderr, format, __VA_ARGS__)
     #define DEBUG_PRINT(msg) fputws(msg, stderr)
 #else
