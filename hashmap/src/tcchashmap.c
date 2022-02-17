@@ -222,9 +222,12 @@ PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
     }
     wchar_t *key = pcomma + 1;
     struct entry *entry = hashmap_delete(map->hashmap, &(struct entry){ .key=key });
-    if (entry) 
+    if (entry) {
+        wcscpy(paramStr, entry->value);
         entry_free(entry);
-    paramStr[0] = L'\0';
+    } else {
+        paramStr[0] = L'\0';
+    }
     return 0;
 }
 
@@ -279,6 +282,7 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     int numArgs;
     bool argError = false;
     WCHAR handle[MAX_HANDLE_LENGTH] = L"";
+    bool printKey = true, printVal = true;
 
     LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
     if (argv == NULL) goto argError;
@@ -287,7 +291,21 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
         if (arglen == 0) {
             argError = true;
         } else if (argv[i][0] == L'/') {
-            // wprintf(L"Found flag '%s'\n", argv[i]);
+            if (arglen == 2) {
+                switch (towupper(argv[i][1])) {
+                case L'K':
+                    printKey = true; printVal = false;
+                    break;
+                case L'V':
+                    printKey = false; printVal = true;
+                    break;
+                default:
+                    fwprintf(stderr, L"Unrecognized flag: %s\n", argv[i]);
+                    argError = true;
+                }
+            } else {
+                argError = true;
+            }
         } else if (arglen < MAX_HANDLE_LENGTH) {
             wcscpy(handle, argv[i]);
         }
@@ -300,13 +318,17 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
     } else {
-        hashmap_scan(map->hashmap, entry_iter_print_entry,
-            &(struct printEntryParams){ .delimiter = map->delimiter });
+        hashmap_scan(map->hashmap, entry_iter_print_entry, &(struct printEntryParams)
+                { .delimiter = map->delimiter, .printKey = printKey, .printVal = printVal});
     }
     return 0;
 
   argError:
-    _putws(L"Usage: hashentries <handle>");
+    _putws(L"Usage: hashentries [/K | /V] <handle>\n"
+           L"\n"
+           L"    /K = only print the keys\n"
+           L"    /V = only print the values"
+           );
     return -1;
 }
 
@@ -314,9 +336,12 @@ static bool entry_iter_print_entry(const void *item, void *udata) {
     const struct entry *entry = item;
     const struct printEntryParams *params = udata;
     wchar_t *delim = params->delimiter;
-    fputws(entry->key, stdout);
-    fputws(delim, stdout);
-    fputws(entry->value, stdout);
+    if (params->printKey)
+        fputws(entry->key, stdout);
+    if (params->printKey && params->printVal)
+        fputws(delim, stdout);
+    if (params->printVal)
+        fputws(entry->value, stdout);
     fputwc(L'\n', stdout);
     return true;
 }

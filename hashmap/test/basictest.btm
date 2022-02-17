@@ -2,28 +2,40 @@
 setlocal
 
 set h=%@hashnew[]
+
 echo Adding entries...
 set r=%@hashput[%h,foo/bar]
 set r=%@hashput[%h,Bob Man/Mary Girl]
 set r=%@hashput[%h,Super "Fly^]individual is "writing/Uglyman]
+
 echo Count = %@hashcount[%h]
 echo -------------------------------------
 hashentries "%h"
+echo -------------------------------------^n
+
+echo Keys:
 echo -------------------------------------
-echo ``
+hashentries /K %h
+echo -------------------------------------^n
+
+echo Values:
+echo -------------------------------------
+hashentries /V %h
+echo -------------------------------------^n
+
 echo Getting...
 echo -------------------------------------
 echo foo = %@hashget[%h,foo]
 echo baz = %@hashget[%h,baz/baz doesn't exist, this is the default]
-echo -------------------------------------
-echo ``
+echo -------------------------------------^n
+
 echo Deleting Bob Man...
 set r=%@hashdel[%h,Bob Man]
 echo Count = %@hashcount[%h]
 echo -------------------------------------
 hashentries %h
-echo -------------------------------------
-echo ``
+echo -------------------------------------^n
+
 echo Clearing...
 set r=%@hashclear[%h]
 echo Count = %@hashcount[%h]
