@@ -12,6 +12,49 @@
 
 #define PLUGIN_API __declspec(dllexport)
 
+// =============================================
+
+#define MAX_DELIMITER_LENGTH 8
+#define DEFAULT_DELIMITER L"/"
+
+#define MAX_HANDLE_LENGTH 21 // 20 characters + null
+
+#ifndef TCCHM_DEBUG
+    #define TCCHM_DEBUG 0
+#endif    
+
+#if TCCHM_DEBUG
+    #define DEBUG_PRINTF(format, ...) fwprintf(stderr, format, __VA_ARGS__)
+    #define DEBUG_PRINT(msg) fputws(msg, stderr)
+#else
+    #define DEBUG_PRINTF
+    #define DEBUG_PRINT
+#endif
+
+// ==============================================
+// Data Structures
+// ==============================================
+
+struct map {
+    struct hashmap *hashmap;
+    wchar_t delimiter[MAX_DELIMITER_LENGTH + 1];  // string delimiting arguments in TCC %@function[] calls
+};
+
+struct entry {
+    wchar_t *key;
+    wchar_t *value;
+};
+    
+struct printEntryParams {
+    wchar_t *delimiter;
+    bool printKey;
+    bool printVal;
+};
+
+// ==============================================
+// Plugin Lifecycle functions
+// ==============================================
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved )
 {
     switch (ul_reason_for_call)
@@ -51,37 +94,10 @@ PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
     return 0;
 }
 
-// ===================================
-// Here begins the meat of the plugin.
-// ===================================
+// ==============================================
+// Utility functions
+// ==============================================
 
-#define MAX_DELIMITER_LENGTH 8
-#define DEFAULT_DELIMITER L"/"
-
-#define MAX_HANDLE_LENGTH 21 // 20 characters + null
-
-#ifndef TCCHM_DEBUG
-    #define TCCHM_DEBUG 0
-#endif    
-
-#if TCCHM_DEBUG
-    #define DEBUG_PRINTF(format, ...) fwprintf(stderr, format, __VA_ARGS__)
-    #define DEBUG_PRINT(msg) fputws(msg, stderr)
-#else
-    #define DEBUG_PRINTF
-    #define DEBUG_PRINT
-#endif
-
-struct map {
-    struct hashmap *hashmap;
-    wchar_t delimiter[MAX_DELIMITER_LENGTH + 1];  // string delimiting arguments in TCC %@function[] calls
-};
-
-struct entry {
-    wchar_t *key;
-    wchar_t *value;
-};
-    
 static int entry_compare(const void *a, const void *b, void *udata) {
     const struct entry *ea = a;
     const struct entry *eb = b;
@@ -98,10 +114,6 @@ static void entry_free(void *item) {
     free(entry->key);  // there's only one allocated block - see f_hashput()
 }
 
-// ==============================================
-// Our "handle" data structures and functions
-// ==============================================
-
 // Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
 // 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
@@ -117,8 +129,23 @@ static struct map * parseHandle(LPTSTR handleStr, size_t length) {
     return map;
 }
 
+// Used by hashentries()
+static bool entry_iter_print_entry(const void *item, void *udata) {
+    const struct entry *entry = item;
+    const struct printEntryParams *params = udata;
+    wchar_t *delim = params->delimiter;
+    if (params->printKey)
+        fputws(entry->key, stdout);
+    if (params->printKey && params->printVal)
+        fputws(delim, stdout);
+    if (params->printVal)
+        fputws(entry->value, stdout);
+    fputwc(L'\n', stdout);
+    return true;
+}
+
 // ==============================================
-// %@Functions
+// TCC %@[] functions
 // ==============================================
 
 // Usage: %@hashnew[optional-delim]
@@ -276,15 +303,6 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
 // Commands
 // ==============================================
 
-// Used by hashentries()
-bool entry_iter_print_entry(const void *item, void *udata);
-
-struct printEntryParams {
-    wchar_t *delimiter;
-    bool printKey;
-    bool printVal;
-};
-
 /*
  * Prints a list of hash entries to stdout, one per line.
  */
@@ -344,19 +362,5 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
            L"    /V = only print the values"
            );
     return -1;
-}
-
-static bool entry_iter_print_entry(const void *item, void *udata) {
-    const struct entry *entry = item;
-    const struct printEntryParams *params = udata;
-    wchar_t *delim = params->delimiter;
-    if (params->printKey)
-        fputws(entry->key, stdout);
-    if (params->printKey && params->printVal)
-        fputws(delim, stdout);
-    if (params->printVal)
-        fputws(entry->value, stdout);
-    fputwc(L'\n', stdout);
-    return true;
 }
 
