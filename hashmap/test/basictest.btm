@@ -1,31 +1,34 @@
 @echo off
 setlocal
 
-set h1=%@hashnew[]
+set h=%@hashnew[]
 echo Adding entries...
-set r=%@hashput[%h1,foo/bar]
-set r=%@hashput[%h1,Bob Man/Mary Girl]
+set r=%@hashput[%h,foo/bar]
+set r=%@hashput[%h,Bob Man/Mary Girl]
+echo Count = %@hashcount[%h]
 echo -------------------------------------
-hashentries %h1
+hashentries "%h"
 echo -------------------------------------
 echo ``
 echo Getting...
 echo -------------------------------------
-echo foo = %@hashget[%h1,foo]
-echo baz = %@hashget[%h1,baz/baz doesn't exist, this is the default]
+echo foo = %@hashget[%h,foo]
+echo baz = %@hashget[%h,baz/baz doesn't exist, this is the default]
 echo -------------------------------------
 echo ``
 echo Deleting Bob Man...
-set r=%@hashdel[%h1,Bob Man]
+set r=%@hashdel[%h,Bob Man]
+echo Count = %@hashcount[%h]
 echo -------------------------------------
-hashentries %h1
+hashentries %h
 echo -------------------------------------
 echo ``
 echo Clearing...
-set r=%@hashclear[%h1]
+set r=%@hashclear[%h]
+echo Count = %@hashcount[%h]
 echo -------------------------------------
-hashentries %h1
+hashentries %h
 echo -------------------------------------
-set r=%@hashfree[%h1]
+set r=%@hashfree[%h]
 
 endlocal

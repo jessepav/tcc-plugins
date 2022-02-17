@@ -38,7 +38,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
-        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear,"
+        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
         L"hashentries";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
@@ -247,16 +247,24 @@ PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
     return 0;
 }
 
-// Used by hashentries()
-static bool entry_iter_print_entry(const void *item, void *udata) {
-    const struct entry *entry = item;
-    wchar_t *delim = udata;
-    fputws(entry->key, stdout);
-    fputws(delim, stdout);
-    fputws(entry->value, stdout);
-    fputwc(L'\n', stdout);
-    return true;
+PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
+    size_t len = wcslen(paramStr);
+    if (len == 0) {
+        wprintf(L"Usage: %%@hashcount[handle]\n");
+        return -1;
+    }
+    struct map *map = parseHandle(paramStr, len);
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+        return -1;
+    }
+    unsigned int count = (unsigned int) hashmap_count(map->hashmap);
+    _ultow_s(count, paramStr, 64, 10);
+    return 0;
 }
+
+// Used by hashentries()
+bool entry_iter_print_entry(const void *item, void *udata);
 
 /*
  * Prints a list of hash entries to stdout, one per line.
@@ -268,6 +276,7 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
         wprintf(L"Usage: hashentries <handle>\n");
         return -1;
     }
+    StripEnclosingQuotes(arg);
     struct map *map = parseHandle(arg, wcslen(arg));
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
@@ -276,3 +285,14 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     hashmap_scan(map->hashmap, entry_iter_print_entry, map->delimiter);
     return 0;
 }
+
+static bool entry_iter_print_entry(const void *item, void *udata) {
+    const struct entry *entry = item;
+    wchar_t *delim = udata;
+    fputws(entry->key, stdout);
+    fputws(delim, stdout);
+    fputws(entry->value, stdout);
+    fputwc(L'\n', stdout);
+    return true;
+}
+
