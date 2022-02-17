@@ -12,10 +12,6 @@
 
 #define PLUGIN_API __declspec(dllexport)
 
-#define BUFSIZE 16384
-
-static wchar_t *buf;  // scratch buffer used by various functions
-
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved )
 {
     switch (ul_reason_for_call)
@@ -48,12 +44,10 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
 }
 
 PLUGIN_API BOOL WINAPI InitializePlugin(void) {
-    buf = malloc((size_t) BUFSIZE * sizeof(wchar_t));
     return 0;
 }
 
 PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
-    free(buf);
     return 0;
 }
 
