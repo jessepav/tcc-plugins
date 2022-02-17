@@ -1,0 +1,8 @@
+TODO
+-----------
+
+Change the handle system from pointers to an array of integer handles, which in turn
+reference pointers. Additionally, the returned string version of the handle should have
+a prefix, so that parseHandle() can recognize invalid handles, avoiding segfaults.
+
+
