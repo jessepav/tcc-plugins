@@ -270,20 +270,43 @@ bool entry_iter_print_entry(const void *item, void *udata);
  * Prints a list of hash entries to stdout, one per line.
  */
 PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
-    wchar_t *arg = argStr;
-    while (iswspace((wint_t) *arg)) arg++;  // Trim leading space
-    if (*arg == L'\0') {
-        wprintf(L"Usage: hashentries <handle>\n");
-        return -1;
+    LPWSTR *argv = NULL;
+
+    while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
+    if (*argStr == L'\0')  // to avoid special behavior with CommandLineToArgvW()
+        goto argError;
+    
+    int numArgs;
+    argv = CommandLineToArgvW(argStr, &numArgs);
+    if (argv == NULL)
+        goto argError;
+    
+    bool argError = false;
+    LPWSTR handle = NULL;
+    for (int i = 0; i < numArgs; i++) {
+        if (wcslen(argv[i]) == 0) {
+            argError = true;
+        } else if (argv[i][0] == L'/') {
+            // wprintf(L"Found flag '%s'\n", argv[i]);
+        } else {
+            handle = argv[i];
+        }
     }
-    StripEnclosingQuotes(arg);
-    struct map *map = parseHandle(arg, wcslen(arg));
+    if (argError || !handle)
+        goto argError;
+    struct map *map = parseHandle(handle, wcslen(handle));
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
-        return -1;
+    } else {
+        hashmap_scan(map->hashmap, entry_iter_print_entry, map->delimiter);
     }
-    hashmap_scan(map->hashmap, entry_iter_print_entry, map->delimiter);
+    if (LocalFree(argv) != NULL) fputws(L"hashmap: LocalFree failed\n", stderr);
     return 0;
+
+  argError:
+    if (argv && LocalFree(argv) != NULL) fputws(L"hashmap: LocalFree failed\n", stderr);
+    _putws(L"Usage: hashentries <handle>");
+    return -1;
 }
 
 static bool entry_iter_print_entry(const void *item, void *udata) {

@@ -7,6 +7,9 @@
 #define _ATL_ALLOW_CHAR_UNSIGNED 1
 #define _CRT_SECURE_NO_WARNINGS 1
 
+#define WIN32_LEAN_AND_MEAN     // Exclude rarely-used stuff from Windows headers
+#include <windows.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <tchar.h>
@@ -18,7 +21,6 @@
 #include <stdlib.h>
 #include <malloc.h>
 
-#define WIN32_LEAN_AND_MEAN     // Exclude rarely-used stuff from Windows headers
-#include <windows.h>
+#include <shellapi.h>
 
 #endif //TCC_HASHMAP_PCH_H
