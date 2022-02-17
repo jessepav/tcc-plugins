@@ -98,6 +98,10 @@ static void entry_free(void *item) {
     free(entry->key);  // there's only one allocated block - see f_hashput()
 }
 
+// ==============================================
+// Our "handle" data structures and functions
+// ==============================================
+
 // Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
 // 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
@@ -112,6 +116,10 @@ static struct map * parseHandle(LPTSTR handleStr, size_t length) {
     _snwscanf(handleStr, length, L"%p", &map);
     return map;
 }
+
+// ==============================================
+// %@Functions
+// ==============================================
 
 // Usage: %@hashnew[optional-delim]
 PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
@@ -263,6 +271,10 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
     _ultow_s(count, paramStr, 64, 10);
     return 0;
 }
+
+// ==============================================
+// Commands
+// ==============================================
 
 // Used by hashentries()
 bool entry_iter_print_entry(const void *item, void *udata);
