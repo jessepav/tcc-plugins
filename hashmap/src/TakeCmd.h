@@ -1423,19 +1423,26 @@ void WINAPI EnableWow64FsRedirection( BOOL bEnable );
 
 #ifdef PLUGIN_MAIN
     char TccKeyWords[] =
-      "7unzip 7zip activate alias assoc associate attrib batcomp bdebugger beep btmonitor break breakpoint bzip2 call cancel case caseall cd cdd chcp chdir chronic clipmonitor cls "
-      "color comment copy copydir date datemonitor debugmonitor debugstring dedupe default defer del delay describe desktop detach differ dir dirhistory dirs diskmonitor do drawbox drawhline drawvline "
-      "echo echoerr echos echoserr echox echoxerr ejectmedia else elseiff endcomment enddo endiff endlocal endswitch endtext enumprocesses enumservers enumshares erase eset eventlog eventmonitor "
-      "everything except exit ffind filelock "
-      "firewiremonitor foldermonitor font for free "
-      "ftype function global gosub goto gzip hash head help history ide if iff iftp inkey input installed jabber jar jobmonitor jobs joindomain jumplist keybd keys keystack "
-      "library links list loadbtm loadmedia local lockmonitor log lua md memory mkdir mklink mklnk monitor mountiso mountvhd move movedir msgbox netmonitor on option osd path pause pdir pee pipeview "
-      "playavi playsound plugin popd postmsg powermonitor print priority processmonitor prompt pshell psubst pushd querybox quit rd reboot recorder recycle regdir regmonitor rem ren rename resolution "
-      "restorepoint return rexec rmdir rshell saveconsole screen screenmonitor script scrput select sendhtml sendmail servicemonitor services set setarray setdos seterror setlocal setp shift shortcut "
-      "shralias smpp snmp snpp sponge sshexec start statusbar switch sync tabcomplete tail tar taskbar taskdialog taskend tasklist tcdialog tcfilter tcfont tctoolbar tee text time "
-      "timer title toast touch tpipe transient tree truename ts type unalias unbzip2 unfunction ungzip unjar unlibrary unmountiso unmountvhd unqlite unset unsetarray unsetp untar unzip uptime usbmonitor uuid vbeep vdesktop ver "
-      "verify view vol vscrput "
-      "wakeonlan webform webupload which window winstation wmiquery wmirun wsettings wshell wshortcut y zip zipsfx ";
+      "7unzip 7zip activate alias assoc associate attrib batcomp bdebugger beep btmonitor break breakpoint bzip2 "
+      "call cancel case caseall cd cdd chcp chdir chronic clipmonitor cls color comment copy copydir date "
+      "datemonitor debugmonitor debugstring dedupe default defer del delay describe desktop detach differ dir "
+      "dirhistory dirs diskmonitor do drawbox drawhline drawvline echo echoerr echos echoserr echox echoxerr "
+      "ejectmedia else elseiff endcomment enddo endiff endlocal endswitch endtext enumprocesses enumservers "
+      "enumshares erase eset eventlog eventmonitor everything except exit ffind filelock firewiremonitor "
+      "foldermonitor font for free ftype function global gosub goto gzip hash head help history ide if iff iftp "
+      "inkey input installed jabber jar jobmonitor jobs joindomain jumplist keybd keys keystack library links "
+      "list loadbtm loadmedia local lockmonitor log lua md memory mkdir mklink mklnk monitor mountiso mountvhd "
+      "move movedir msgbox netmonitor on option osd path pause pdir pee pipeview playavi playsound plugin popd "
+      "postmsg powermonitor print priority processmonitor prompt pshell psubst pushd querybox quit rd reboot "
+      "recorder recycle regdir regmonitor rem ren rename resolution restorepoint return rexec rmdir rshell "
+      "saveconsole screen screenmonitor script scrput select sendhtml sendmail servicemonitor services set "
+      "setarray setdos seterror setlocal setp shift shortcut shralias smpp snmp snpp sponge sshexec start "
+      "statusbar switch sync tabcomplete tail tar taskbar taskdialog taskend tasklist tcdialog tcfilter tcfont "
+      "tctoolbar tee text time timer title toast touch tpipe transient tree truename ts type unalias unbzip2 "
+      "unfunction ungzip unjar unlibrary unmountiso unmountvhd unqlite unset unsetarray unsetp untar unzip "
+      "uptime usbmonitor uuid vbeep vdesktop ver verify view vol vscrput wakeonlan webform webupload which "
+      "window winstation wmiquery wmirun wsettings wshell wshortcut y zip zipsfx";
 #else
     extern char TccKeyWords[];
 #endif
+
