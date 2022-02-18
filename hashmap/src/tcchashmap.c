@@ -88,7 +88,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
-        L"@hashnew,@hashfree,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
+        L"@hashnew,@hashfree,@hashdelim,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
         L"hashentries";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
@@ -246,6 +246,24 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
     if (errno != 0)
         _wperror(L"f_hashfree");
     releaseHandle(handle);
+    return 0;
+}
+
+PLUGIN_API INT WINAPI f_hashdelim(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
+    size_t len = wcslen(paramStr);
+    if (len == 0) {
+        wprintf(L"Usage: %%@hashdelim[handle]\n");
+        return -1;
+    }
+    if (parseHandle(paramStr, wcslen(paramStr), &handle))
+        map = mapPtrs[handle];
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+        return -1;
+    }
+    wcscpy(paramStr, map->delimiter);
     return 0;
 }
 
