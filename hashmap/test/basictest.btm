@@ -26,8 +26,9 @@ echo -------------------------------------^n
 
 echo Getting...
 echo -------------------------------------
-echo foo = %@hashget[%h,foo]
-echo baz = %@hashget[%h,baz/baz doesn't exist, this is the default]
+echo foo = %@hashget[%h,foo/(missing)]
+echo baz = %@hashget[%h,baz/(baz doesn't exist, this is the default)]
+echo Bob Man = %@hashget[%h,Bob Man]
 echo -------------------------------------^n
 
 echo Deleting Bob Man...
@@ -44,6 +45,8 @@ echo -------------------------------------
 hashentries %h
 echo -------------------------------------^n
 set r=%@hashfree[%h]
+
+quit
 
 echo Allocating a bunch of handles...
 set n=40
