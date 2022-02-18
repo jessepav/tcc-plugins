@@ -18,6 +18,7 @@
 #define DEFAULT_DELIMITER L"/"
 
 #define MAX_HANDLE_LENGTH 21 // 20 characters + null
+#define HANDLE_FORMAT L"H%04uU"
 #define DEFAULT_HANDLE_CAPACITY 16
 #define MAX_HANDLE_CAPACITY 1024
 #define INVALID_HANDLE UINT_MAX
@@ -170,7 +171,7 @@ static void releaseHandle(unsigned int handle) {
 // 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
 static int writeHandleString(unsigned int handle, LPTSTR dest) {
-    return swprintf(dest, MAX_HANDLE_LENGTH, L"H%uU", handle);
+    return swprintf(dest, MAX_HANDLE_LENGTH, HANDLE_FORMAT, handle);
 }
 
 // Parses 'handleStr' and, if successful, stores the parsed handle in *handle.
@@ -178,7 +179,7 @@ static int writeHandleString(unsigned int handle, LPTSTR dest) {
 // Returns 'true' if the parse was successful, 'false' otherwise.
 static bool parseHandle(LPTSTR handleStr, size_t length, unsigned int *handle) {
     unsigned int h;
-    if (_snwscanf(handleStr, length, L"H%uU", &h) == 1 && h < handleCapacity) {
+    if (_snwscanf(handleStr, length, HANDLE_FORMAT, &h) == 1 && h < handleCapacity) {
         *handle = h;
         return true;
     } else {

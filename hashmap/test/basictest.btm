@@ -7,6 +7,7 @@ echo Adding entries...
 set r=%@hashput[%h,foo/bar]
 set r=%@hashput[%h,Bob Man/Mary Girl]
 set r=%@hashput[%h,Super "Fly^]individual is "writing/Uglyman]
+set r=%@hashput[%h,strange^nkey54/normal value]
 
 echo Count = %@hashcount[%h]
 echo -------------------------------------
@@ -45,14 +46,18 @@ echo -------------------------------------^n
 set r=%@hashfree[%h]
 
 echo Allocating a bunch of handles...
-setarray handles[40]
-DO i = 0 TO 39
+set n=40
+setarray handles[%n]
+echo -------------------------------------
+DO i = 0 TO %((%n-1))
     set handles[%i]=%@hashnew[]
-    echo handles[%1]=%handles[%i]
+    echos handles[%@FORMATN[02.0,%i]]=%handles[%i]
+    IF %(((%i+1) MOD 5)) == 0 (echo ``) ELSE (echos ` `)
 ENDDO
+echo -------------------------------------^n
 
-echo ^nFreeing handles...
-DO i = 0 TO 39 (set r=%@hashfree[%handles[%i]])
+echo Freeing handles...
+DO i = 0 TO %((%n-1)) (set r=%@hashfree[%handles[%i]])
 
 unsetarray handles
 
