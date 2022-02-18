@@ -2,6 +2,9 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+option(TCCHM_DEBUG "Compile hashmap plugin with debug messages" OFF)
+option(USE_PCH "Use precompiled headers" ON)
+
 if(NOT CMAKE_BUILD_TYPE)
     message(NOTICE "Setting CMAKE_BUILD_TYPE to Release")
     set(CMAKE_BUILD_TYPE Release)
@@ -28,4 +31,12 @@ set_target_properties(hashmap PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"  # an alternative is MultiThreaded for /MT
 )
 
-target_precompile_headers(hashmap PRIVATE "src/pch.h")
+if(TCCHM_DEBUG)
+    message(NOTICE "Compiling with debug messages")
+    target_compile_definitions(hashmap PRIVATE TCCHM_DEBUG=1)
+endif()
+
+if(USE_PCH)
+    message(NOTICE "Using precompiled headers")
+    target_precompile_headers(hashmap PRIVATE "src/pch.h")
+endif()
