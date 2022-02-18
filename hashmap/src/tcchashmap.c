@@ -54,8 +54,8 @@ struct printEntryParams {
 
 static unsigned int handleCapacity;
 static unsigned int nextHandleIdx;
-static unsigned int *availableHandleNos;
-static struct map *handlePtrs;
+static unsigned int *availableHandles;
+static struct map **handlePtrs;
 
 // ==============================================
 // Plugin Lifecycle functions
@@ -95,16 +95,18 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
 PLUGIN_API BOOL WINAPI InitializePlugin(void) {
     handleCapacity = DEFAULT_HANDLE_CAPACITY;
     nextHandleIdx = 0;
-    availableHandleNos = malloc(sizeof(unsigned int) * handleCapacity);
+    availableHandles = malloc(sizeof(unsigned int) * handleCapacity);
     handlePtrs = malloc(sizeof(struct map *) * handleCapacity);
     for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
-        availableHandleNos[i] = i;
+        availableHandles[i] = i;
+    for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
+        handlePtrs[i] = NULL;
     return 0;
 }
 
 PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
     free(handlePtrs);
-    free(availableHandleNos);
+    free(availableHandles);
     return 0;
 }
 
@@ -129,10 +131,23 @@ static void entry_free(void *item) {
 }
 
 static unsigned int checkoutHandle() {
-    return -1;
+    if (nextHandleIdx == handleCapacity) { // we need to grow our arrays
+        handleCapacity *= 2;
+        availableHandles = realloc(availableHandles, sizeof(unsigned int) * handleCapacity);
+        handlePtrs = realloc(handlePtrs, sizeof(struct map *) * handleCapacity);
+        for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
+            availableHandles[i] = i;
+        for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
+            handlePtrs[i] = NULL;
+    }
+    return availableHandles[nextHandleIdx++];
 }
 
 static void returnHandle(unsigned int handle) {
+    if (nextHandleIdx > 0) {
+        availableHandles[--nextHandleIdx] = handle;
+        handlePtrs[handle] = NULL;
+    }
 }
 
 // Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
