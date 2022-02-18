@@ -52,10 +52,13 @@ struct printEntryParams {
     bool printVal;
 };
 
-static unsigned int handleCapacity;
-static unsigned int nextHandleIdx;
-static unsigned int *availableHandles;
-static struct map **handlePtrs;
+// In our parlance, a "handle" is simply a number, starting at 0,
+// that represents an index into an array of map pointers.
+
+static unsigned int handleCapacity;  // the size of our arrays
+static unsigned int nextHandleIdx;   // the index into availableHandles of the next available handle
+static unsigned int *availableHandles; // array of handles
+static struct map **handlePtrs; // map from handle to struct map pointers
 
 // ==============================================
 // Plugin Lifecycle functions
@@ -153,16 +156,21 @@ static void returnHandle(unsigned int handle) {
 // Stores a handle (arbitrary string uniquely identifying the map) in 'dest'.
 // 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
-static int writeHandleString(struct map *map, LPTSTR dest) {
-    return swprintf(dest, MAX_HANDLE_LENGTH, L"%p", map);
+static int writeHandleString(unsigned int handle, LPTSTR dest) {
+    return swprintf(dest, MAX_HANDLE_LENGTH, L"HMH%u", handle);
 }
 
-// Parses 'handleStr' and returns a pointer to the struct map represented by the handle
+// Parses 'handleStr' and, if successful, stores the parsed handle in *handle.
 // 'length' indicates the number of characters in 'handleStr' the function will consider.
-static struct map * parseHandle(LPTSTR handleStr, size_t length) {
-    struct map *map = NULL;
-    _snwscanf(handleStr, length, L"%p", &map);
-    return map;
+// Returns 'true' if the parse was successful, 'false' otherwise.
+static bool parseHandle(LPTSTR handleStr, size_t length, unsigned int *handle) {
+    unsigned int h;
+    if (_snwscanf(handleStr, length, L"HMH%u", &h) == 1 && h < handleCapacity) {
+        *handle = h;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 // Used by hashentries()
@@ -196,37 +204,41 @@ PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
     // It may be the case, if the length of delimiter >= MAX_DELIMITER_LENGTH,
     // that a NULL is not appended, and so we terminate it manually.
     map->delimiter[MAX_DELIMITER_LENGTH] = L'\0';
-    DEBUG_PRINTF(L"Allocated a map at address 0x%p with delimiter \"%s\"\n", map, map->delimiter);
-    writeHandleString(map, paramStr);
+    unsigned int handle = checkoutHandle();
+    handlePtrs[handle] = map;
+    writeHandleString(handle, paramStr);
     return 0;
 }
 
 PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
-    struct map *map = parseHandle(paramStr, wcslen(paramStr));
+    unsigned int handle;
+    struct map *map = NULL;
+    if (parseHandle(paramStr, wcslen(paramStr), &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
     }
-    DEBUG_PRINTF(L"Freeing the map at address 0x%p\n", map);
     paramStr[0] = L'\0';  // return an empty string
     hashmap_free(map->hashmap);
     _set_errno(0);
     free(map);
-    if (errno != 0) {
+    if (errno != 0)
         _wperror(L"f_hashfree");
-        return -1;
-    } else {
-        return 0;
-    }
+    returnHandle(handle);
+    return 0;
 }
 
 PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
     wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr) {
         wprintf(L"Usage: %%@hashget[handle,key[<delimiter>default_val]]\n");
         return -1;
     }
-    struct map *map = parseHandle(paramStr, pcomma - paramStr);
+    if (parseHandle(paramStr, pcomma - paramStr, &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -247,10 +259,13 @@ PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
     wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr)
         goto paramError;
-    struct map *map = parseHandle(paramStr, pcomma - paramStr);
+    if (parseHandle(paramStr, pcomma - paramStr, &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -283,12 +298,15 @@ PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
     wchar_t *pcomma = wcschr(paramStr, L',');
     if (!pcomma || pcomma == paramStr) {
         wprintf(L"Usage: %%@hashdel[handle,key]\n");
         return -1;
     }
-    struct map *map = parseHandle(paramStr, pcomma - paramStr);
+    if (parseHandle(paramStr, pcomma - paramStr, &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -305,12 +323,15 @@ PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
     size_t len = wcslen(paramStr);
     if (len == 0) {
         wprintf(L"Usage: %%@hashclear[handle]\n");
         return -1;
     }
-    struct map *map = parseHandle(paramStr, len);
+    if (parseHandle(paramStr, wcslen(paramStr), &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -320,12 +341,15 @@ PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
 }
 
 PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
+    unsigned int handle;
+    struct map *map = NULL;
     size_t len = wcslen(paramStr);
     if (len == 0) {
         wprintf(L"Usage: %%@hashcount[handle]\n");
         return -1;
     }
-    struct map *map = parseHandle(paramStr, len);
+    if (parseHandle(paramStr, wcslen(paramStr), &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -349,8 +373,10 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     
     int numArgs;
     bool argError = false;
-    WCHAR handle[MAX_HANDLE_LENGTH] = L"";
+    WCHAR handleStr[MAX_HANDLE_LENGTH] = L"";
     bool printKey = true, printVal = true;
+    unsigned int handle;
+    struct map *map = NULL;
 
     LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
     if (argv == NULL) goto argError;
@@ -375,14 +401,15 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
                 argError = true;
             }
         } else if (arglen < MAX_HANDLE_LENGTH) {
-            wcscpy(handle, argv[i]);
+            wcscpy(handleStr, argv[i]);
         }
     }
     if (LocalFree(argv) != NULL)
         fputws(L"hashmap: LocalFree failed\n", stderr);
-    if (argError || !wcslen(handle))
+    if (argError || !wcslen(handleStr))
         goto argError;
-    struct map *map = parseHandle(handle, wcslen(handle));
+    if (parseHandle(handleStr, wcslen(handleStr), &handle))
+        map = handlePtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
     } else {
