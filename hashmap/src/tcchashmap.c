@@ -54,13 +54,13 @@ struct printEntryParams {
     bool printVal;
 };
 
-// In our parlance, a "handle" is simply a number, starting at 0,
+// In our parlance a "handle" is simply a number, starting at 0,
 // that represents an index into an array of map pointers.
 
 static unsigned int handleCapacity;  // the size of our arrays
 static unsigned int nextHandleIdx;   // the index into availableHandles of the next available handle
 static unsigned int *availableHandles; // array of handles
-static struct map **mapPtrs; // map from handle to struct map pointers
+static struct map **mapPtrs; // table from handle (i.e. index) to map pointers
 
 // ==============================================
 // Plugin Lifecycle functions
