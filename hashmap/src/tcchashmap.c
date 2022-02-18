@@ -19,6 +19,8 @@
 
 #define MAX_HANDLE_LENGTH 21 // 20 characters + null
 #define DEFAULT_HANDLE_CAPACITY 16
+#define MAX_HANDLE_CAPACITY 1024
+#define INVALID_HANDLE UINT_MAX
 
 #ifndef TCCHM_DEBUG
     #define TCCHM_DEBUG 0
@@ -58,7 +60,7 @@ struct printEntryParams {
 static unsigned int handleCapacity;  // the size of our arrays
 static unsigned int nextHandleIdx;   // the index into availableHandles of the next available handle
 static unsigned int *availableHandles; // array of handles
-static struct map **handlePtrs; // map from handle to struct map pointers
+static struct map **mapPtrs; // map from handle to struct map pointers
 
 // ==============================================
 // Plugin Lifecycle functions
@@ -99,16 +101,16 @@ PLUGIN_API BOOL WINAPI InitializePlugin(void) {
     handleCapacity = DEFAULT_HANDLE_CAPACITY;
     nextHandleIdx = 0;
     availableHandles = malloc(sizeof(unsigned int) * handleCapacity);
-    handlePtrs = malloc(sizeof(struct map *) * handleCapacity);
-    for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
+    mapPtrs = malloc(sizeof(struct map *) * handleCapacity);
+    for (unsigned int i = 0; i < handleCapacity; i++) {
         availableHandles[i] = i;
-    for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
-        handlePtrs[i] = NULL;
+        mapPtrs[i] = NULL;
+    }
     return 0;
 }
 
 PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
-    free(handlePtrs);
+    free(mapPtrs);
     free(availableHandles);
     return 0;
 }
@@ -133,23 +135,34 @@ static void entry_free(void *item) {
     free(entry->key);  // there's only one allocated block - see f_hashput()
 }
 
+/*
+ * Returns a new handle, or INVALID_HANDLE if no more handles are available, or a
+ * memory allocation error was encountered.
+ */
 static unsigned int checkoutHandle() {
     if (nextHandleIdx == handleCapacity) { // we need to grow our arrays
+        if (handleCapacity == MAX_HANDLE_CAPACITY)
+            return INVALID_HANDLE;
         handleCapacity *= 2;
-        availableHandles = realloc(availableHandles, sizeof(unsigned int) * handleCapacity);
-        handlePtrs = realloc(handlePtrs, sizeof(struct map *) * handleCapacity);
-        for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
+        DEBUG_PRINTF(L"Growing handle arrays: new capacity = %u\n", handleCapacity);
+        void *p = realloc(availableHandles, sizeof(unsigned int) * handleCapacity);
+        void *q = realloc(mapPtrs, sizeof(struct map *) * handleCapacity);
+        if (!p || !q)
+            return INVALID_HANDLE;
+        availableHandles = p;
+        mapPtrs = q;
+        for (unsigned int i = nextHandleIdx; i < handleCapacity; i++) {
             availableHandles[i] = i;
-        for (unsigned int i = nextHandleIdx; i < handleCapacity; i++)
-            handlePtrs[i] = NULL;
+            mapPtrs[i] = NULL;
+        }
     }
     return availableHandles[nextHandleIdx++];
 }
 
-static void returnHandle(unsigned int handle) {
+static void releaseHandle(unsigned int handle) {
     if (nextHandleIdx > 0) {
         availableHandles[--nextHandleIdx] = handle;
-        handlePtrs[handle] = NULL;
+        mapPtrs[handle] = NULL;
     }
 }
 
@@ -157,7 +170,7 @@ static void returnHandle(unsigned int handle) {
 // 'dest' should be large enough to hold at least MAX_HANDLE_LENGTH characters.
 // Returns the number of characters written (not counting the NULL)
 static int writeHandleString(unsigned int handle, LPTSTR dest) {
-    return swprintf(dest, MAX_HANDLE_LENGTH, L"HMH%u", handle);
+    return swprintf(dest, MAX_HANDLE_LENGTH, L"H%uU", handle);
 }
 
 // Parses 'handleStr' and, if successful, stores the parsed handle in *handle.
@@ -165,7 +178,7 @@ static int writeHandleString(unsigned int handle, LPTSTR dest) {
 // Returns 'true' if the parse was successful, 'false' otherwise.
 static bool parseHandle(LPTSTR handleStr, size_t length, unsigned int *handle) {
     unsigned int h;
-    if (_snwscanf(handleStr, length, L"HMH%u", &h) == 1 && h < handleCapacity) {
+    if (_snwscanf(handleStr, length, L"H%uU", &h) == 1 && h < handleCapacity) {
         *handle = h;
         return true;
     } else {
@@ -194,18 +207,25 @@ static bool entry_iter_print_entry(const void *item, void *udata) {
 
 // Usage: %@hashnew[optional-delim]
 PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
+    StripEnclosingQuotes(paramStr);
+    size_t n = wcslen(paramStr);
+    if (n > MAX_DELIMITER_LENGTH) {
+        fwprintf(stderr, L"hashmap: delimiter length exceeds maximum allowed (%d)\n", MAX_DELIMITER_LENGTH);
+        paramStr[0] = L'\0';
+        return -1;
+    }
+    wchar_t *delimiter = n != 0 ? paramStr : DEFAULT_DELIMITER;
+    unsigned int handle = checkoutHandle();
+    if (handle == INVALID_HANDLE) {
+        fwprintf(stderr, L"hashmap: unable to allocate new handle\n");
+        paramStr[0] = L'\0';
+        return -1;
+    }
     struct map *map = malloc(sizeof(struct map));
     map->hashmap = hashmap_new(sizeof(struct entry), 0, 0, 0,
                                entry_hash, entry_compare, entry_free, NULL);
-    StripEnclosingQuotes(paramStr);
-    size_t n = wcslen(paramStr);
-    wchar_t *delimiter = n != 0 ? paramStr : DEFAULT_DELIMITER;
-    wcsncpy(map->delimiter, delimiter, MAX_DELIMITER_LENGTH);
-    // It may be the case, if the length of delimiter >= MAX_DELIMITER_LENGTH,
-    // that a NULL is not appended, and so we terminate it manually.
-    map->delimiter[MAX_DELIMITER_LENGTH] = L'\0';
-    unsigned int handle = checkoutHandle();
-    handlePtrs[handle] = map;
+    wcscpy(map->delimiter, delimiter);
+    mapPtrs[handle] = map;
     writeHandleString(handle, paramStr);
     return 0;
 }
@@ -214,7 +234,7 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
     unsigned int handle;
     struct map *map = NULL;
     if (parseHandle(paramStr, wcslen(paramStr), &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -225,7 +245,7 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
     free(map);
     if (errno != 0)
         _wperror(L"f_hashfree");
-    returnHandle(handle);
+    releaseHandle(handle);
     return 0;
 }
 
@@ -238,7 +258,7 @@ PLUGIN_API INT WINAPI f_hashget(LPTSTR paramStr) {
         return -1;
     }
     if (parseHandle(paramStr, pcomma - paramStr, &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -265,7 +285,7 @@ PLUGIN_API INT WINAPI f_hashput(LPTSTR paramStr) {
     if (!pcomma || pcomma == paramStr)
         goto paramError;
     if (parseHandle(paramStr, pcomma - paramStr, &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -306,7 +326,7 @@ PLUGIN_API INT WINAPI f_hashdel(LPTSTR paramStr) {
         return -1;
     }
     if (parseHandle(paramStr, pcomma - paramStr, &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -331,7 +351,7 @@ PLUGIN_API INT WINAPI f_hashclear(LPTSTR paramStr) {
         return -1;
     }
     if (parseHandle(paramStr, wcslen(paramStr), &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
@@ -349,13 +369,13 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
         return -1;
     }
     if (parseHandle(paramStr, wcslen(paramStr), &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
     }
     unsigned int count = (unsigned int) hashmap_count(map->hashmap);
-    _ultow_s(count, paramStr, 64, 10);
+    _ultow(count, paramStr, 10);
     return 0;
 }
 
@@ -409,7 +429,7 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     if (argError || !wcslen(handleStr))
         goto argError;
     if (parseHandle(handleStr, wcslen(handleStr), &handle))
-        map = handlePtrs[handle];
+        map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
     } else {

@@ -41,7 +41,19 @@ set r=%@hashclear[%h]
 echo Count = %@hashcount[%h]
 echo -------------------------------------
 hashentries %h
-echo -------------------------------------
+echo -------------------------------------^n
 set r=%@hashfree[%h]
+
+echo Allocating a bunch of handles...
+setarray handles[40]
+DO i = 0 TO 39
+    set handles[%i]=%@hashnew[]
+    echo handles[%1]=%handles[%i]
+ENDDO
+
+echo ^nFreeing handles...
+DO i = 0 TO 39 (set r=%@hashfree[%handles[%i]])
+
+unsetarray handles
 
 endlocal
