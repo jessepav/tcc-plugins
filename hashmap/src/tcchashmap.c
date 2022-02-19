@@ -90,7 +90,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
         L"@hashnew,@hashfree,@hashdelim,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
-        L"hashentries";
+        L"hashentries,hashfile";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
     piInfo.nBuild = 1;
@@ -466,3 +466,76 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
     return -1;
 }
 
+#define HASHFILE_READ   0
+#define HASHFILE_APPEND 1
+#define HASHFILE_WRITE  2
+
+/*
+ * Read/write map to/from a file.
+ */
+PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
+    while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
+    if (*argStr == L'\0')   // to avoid special behavior with CommandLineToArgvW()
+        goto showHelp;      //    when passed an empty string
+    
+    int numArgs;
+    wchar_t *handleStr;
+    int command;
+    wchar_t *filename;
+
+    bool success = false;
+
+    LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
+    if (argv == NULL || numArgs != 3)
+        goto showHelp;
+    // Get the handle
+    if (wcslen(argv[0]) < MAX_HANDLE_LENGTH)
+        handleStr = argv[0];
+    else
+        goto showHelp;
+    // Then the command
+    _wcsupr(argv[1]);  // convert flag to uppercase
+    if (wcscmp(argv[1], L"/R") == 0)
+        command = HASHFILE_READ;
+    else if (wcscmp(argv[1], L"/RA") == 0)
+        command = HASHFILE_APPEND;
+    else if (wcscmp(argv[1], L"/W") == 0)
+        command = HASHFILE_WRITE;
+    else
+        goto showHelp;
+    // And the filename
+    filename = argv[2];
+
+    unsigned int handle;
+    struct map *map = NULL;
+
+    if (parseHandle(handleStr, wcslen(handleStr), &handle))
+        map = mapPtrs[handle];
+    if (map == NULL) {
+        wprintf(L"Hashmap: invalid handle\n");
+    } else {
+        switch (command) {
+        case HASHFILE_READ:
+            break;
+        case HASHFILE_APPEND:
+            break;
+        case HASHFILE_WRITE:
+            break;
+        }
+        success = true;
+    }
+    goto cleanup;
+
+  showHelp:
+    _putws(L"Usage: hashentries <handle> </R | /RA | /W > <filename>\n"
+           L"\n"
+           L"    /R = read hash entries from file, discarding any current entries\n"
+           L"   /RA = read hash entries from file, appending them to any current entries\n"
+           L"    /W = write hash entries to file"
+           );
+
+  cleanup:
+    if (argv && LocalFree(argv) != NULL)
+        fputws(L"hashmap: LocalFree failed\n", stderr);
+    return success ? 0 : -1;
+}
