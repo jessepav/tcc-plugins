@@ -467,8 +467,11 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
 }
 
 #define HASHFILE_READ   0
-#define HASHFILE_APPEND 1
+#define HASHFILE_MERGE  1
 #define HASHFILE_WRITE  2
+
+#define HASHFILE_MARKER         0xABCD
+#define HASHFILE_MARKER_SWAPPED 0xCDAB  // detect wrong endianness
 
 /*
  * Read/write map to/from a file.
@@ -488,23 +491,30 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
     if (argv == NULL || numArgs != 3)
         goto showHelp;
+
+    // I declare variables here just in case we change our method of argument parsing later.
+    wchar_t *handleArg, *commandArg, *filenameArg;
+    handleArg = argv[0];
+    commandArg = argv[1];
+    filenameArg = argv[2];
+    
     // Get the handle
-    if (wcslen(argv[0]) < MAX_HANDLE_LENGTH)
-        handleStr = argv[0];
+    if (wcslen(handleArg) < MAX_HANDLE_LENGTH)
+        handleStr = handleArg;
     else
         goto showHelp;
     // Then the command
-    _wcsupr(argv[1]);  // convert flag to uppercase
-    if (wcscmp(argv[1], L"/R") == 0)
+    _wcsupr(commandArg);  // convert flag to uppercase
+    if (wcscmp(commandArg, L"/R") == 0)
         command = HASHFILE_READ;
-    else if (wcscmp(argv[1], L"/RA") == 0)
-        command = HASHFILE_APPEND;
-    else if (wcscmp(argv[1], L"/W") == 0)
+    else if (wcscmp(commandArg, L"/M") == 0)
+        command = HASHFILE_MERGE;
+    else if (wcscmp(commandArg, L"/W") == 0)
         command = HASHFILE_WRITE;
     else
         goto showHelp;
     // And the filename
-    filename = argv[2];
+    filename = filenameArg;
 
     unsigned int handle;
     struct map *map = NULL;
@@ -517,7 +527,7 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
         switch (command) {
         case HASHFILE_READ:
             break;
-        case HASHFILE_APPEND:
+        case HASHFILE_MERGE:
             break;
         case HASHFILE_WRITE:
             break;
@@ -527,11 +537,11 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     goto cleanup;
 
   showHelp:
-    _putws(L"Usage: hashentries <handle> </R | /RA | /W > <filename>\n"
+    _putws(L"Usage: hashentries <handle> </R | /M | /W > <filename>\n"
            L"\n"
-           L"    /R = read hash entries from file, discarding any current entries\n"
-           L"   /RA = read hash entries from file, appending them to any current entries\n"
-           L"    /W = write hash entries to file"
+           L"   /R = read hash entries from file, discarding any current entries\n"
+           L"   /M = read hash entries from file, merging them with any current entries\n"
+           L"   /W = write hash entries to file"
            );
 
   cleanup:
@@ -539,3 +549,4 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
         fputws(L"hashmap: LocalFree failed\n", stderr);
     return success ? 0 : -1;
 }
+
