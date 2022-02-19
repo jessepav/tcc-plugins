@@ -477,10 +477,7 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
  * Read/write map to/from a file.
  */
 PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
-    while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
-    if (*argStr == L'\0')   // to avoid special behavior with CommandLineToArgvW()
-        goto showHelp;      //    when passed an empty string
-    
+    LPWSTR *argv = NULL;
     int numArgs;
     wchar_t *handleStr;
     int command;
@@ -488,7 +485,11 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
 
     bool success = false;
 
-    LPWSTR *argv = CommandLineToArgvW(argStr, &numArgs);
+    while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
+    if (*argStr == L'\0')   // to avoid special behavior with CommandLineToArgvW()
+        goto showHelp;      //    when passed an empty string
+    
+    argv = CommandLineToArgvW(argStr, &numArgs);
     if (argv == NULL || numArgs != 3)
         goto showHelp;
 
@@ -524,6 +525,11 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
     } else {
+        int r = _waccess(filename, 00);
+        if (r == -1) {
+            wprintf(L"The file \"%s\" does not exist!\n", filename);
+            goto cleanup;
+        }
         switch (command) {
         case HASHFILE_READ:
             break;
@@ -543,7 +549,8 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
            L"   /M = read hash entries from file, merging them with any current entries\n"
            L"   /W = write hash entries to file"
            );
-
+    // fall through to cleanup:
+    
   cleanup:
     if (argv && LocalFree(argv) != NULL)
         fputws(L"hashmap: LocalFree failed\n", stderr);

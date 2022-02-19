@@ -22,5 +22,6 @@
 #include <malloc.h>
 
 #include <shellapi.h>
+#include <io.h>
 
 #endif //TCC_HASHMAP_PCH_H
