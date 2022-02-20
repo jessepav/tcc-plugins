@@ -1,6 +1,15 @@
 @echo off
 setlocal
 
+:: Check if the plugin is loaded
+IFF %@LEN[%@EXECSTR[plugin hashmap >&> NUL]] == 0 THEN
+    echo Loading hashmap plugin...^n
+    plugin /L "%@BATCHDIR[]\..\build\cmake-build\hashmap.dll"
+    set needUnload=1
+ELSE
+    set needUnload=0
+ENDIFF
+
 set h=%@hashnew[]
 
 echo Adding entries...
@@ -46,22 +55,24 @@ hashentries %h
 echo -------------------------------------^n
 set r=%@hashfree[%h]
 
-quit
+IFF %testHandles==1 THEN
+    echo Allocating a bunch of handles...
+    set n=40
+    setarray handles[%n]
+    echo -------------------------------------
+    DO i = 0 TO %((%n-1))
+        set handles[%i]=%@hashnew[]
+        echos handles[%@FORMATN[02.0,%i]]=%handles[%i]
+        IF %(((%i+1) MOD 5)) == 0 (echo ``) ELSE (echos ` `)
+    ENDDO
+    echo -------------------------------------^n
 
-echo Allocating a bunch of handles...
-set n=40
-setarray handles[%n]
-echo -------------------------------------
-DO i = 0 TO %((%n-1))
-    set handles[%i]=%@hashnew[]
-    echos handles[%@FORMATN[02.0,%i]]=%handles[%i]
-    IF %(((%i+1) MOD 5)) == 0 (echo ``) ELSE (echos ` `)
-ENDDO
-echo -------------------------------------^n
+    echo Freeing handles...
+    DO i = 0 TO %((%n-1)) (set r=%@hashfree[%handles[%i]])
 
-echo Freeing handles...
-DO i = 0 TO %((%n-1)) (set r=%@hashfree[%handles[%i]])
+    unsetarray handles
+ENDIFF
 
-unsetarray handles
+IF %needUnload==1 (echo Unloading hashmap plugin... & plugin /U hashmap)
 
 endlocal
