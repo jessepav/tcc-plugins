@@ -1,0 +1,46 @@
+@echo off
+setlocal
+
+:: Check if the plugin is loaded
+IFF %@LEN[%@EXECSTR[plugin hashmap >&> NUL]] == 0 THEN
+    echo Loading hashmap plugin...^n
+    plugin /L "%@BATCHDIR[]\..\build\cmake-build\hashmap.dll"
+    set needUnload=1
+ELSE
+    set needUnload=0
+ENDIFF
+
+set HF1="%@BATCHDIR[]\test.hf"
+
+del /Q %HF1
+
+set h=%@hashnew[]
+set r=%@hashput[%h,bart/simpson]
+set r=%@hashput[%h,foo/barbar]
+echo Entries to write (delimiter is %@hashdelim[%h]):
+echo ------------------------------------
+hashentries %h
+echo ------------------------------------^n
+hashfile %h /W %HF1
+set r=%@hashfree[%h]
+
+set h=%@hashnew[=]
+hashfile %h /R %HF1
+echo Entries read (delimiter is %@hashdelim[%h]):
+echo ------------------------------------
+hashentries %h
+echo ------------------------------------^n
+set r=%@hashfree[%h]
+
+set h=%@hashnew["->"]
+set r=%@hashput[%h,extra power"->"battery]
+hashfile %h /M %HF1
+echo After merging (delimiter is %@hashdelim[%h]):
+echo ------------------------------------
+hashentries %h
+echo ------------------------------------^n
+set r=%@hashfree[%h]
+
+IF %needUnload==1 (echo Unloading hashmap plugin... & plugin /U hashmap)
+
+endlocal

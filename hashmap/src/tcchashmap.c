@@ -202,13 +202,25 @@ static bool entry_iter_print_entry(const void *item, void *udata) {
     return true;
 }
 
+// Used by hashfile()
+static bool entry_iter_write_entry(const void *item, void *udata) {
+    const struct entry *entry = item;
+    const FILE *fp = udata;
+    uint32_t keyLen = (uint32_t) wcslen(entry->key);   // in units of characters!
+    uint32_t valueLen = (uint32_t) wcslen(entry->value);
+    fwrite(&keyLen, 4, 1, fp);
+    fwrite(&valueLen, 4, 1, fp);
+    fwrite(entry->key, sizeof(wchar_t), keyLen, fp);
+    fwrite(entry->value, sizeof(wchar_t), valueLen, fp);
+    return true;
+}
+
 // ==============================================
 // TCC %@[] functions
 // ==============================================
 
 // Usage: %@hashnew[optional-delim]
 PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
-    StripEnclosingQuotes(paramStr);
     size_t n = wcslen(paramStr);
     if (n > MAX_DELIMITER_LENGTH) {
         fwprintf(stderr, L"hashmap: delimiter length exceeds maximum allowed (%d)\n", MAX_DELIMITER_LENGTH);
@@ -470,8 +482,15 @@ PLUGIN_API INT WINAPI hashentries(LPTSTR argStr) {
 #define HASHFILE_MERGE  1
 #define HASHFILE_WRITE  2
 
-#define HASHFILE_MARKER         0xABCD
-#define HASHFILE_MARKER_SWAPPED 0xCDAB  // detect wrong endianness
+// fopen() mode strings corresponding to each of the above command constants
+static const wchar_t *hashfile_modes[] = {
+    [HASHFILE_READ]  = L"rb", 
+    [HASHFILE_MERGE] = L"rb",
+    [HASHFILE_WRITE] = L"wb"
+};
+
+static const uint16_t hashfile_marker         = 0xABCD;
+static const uint16_t hashfile_marker_swapped = 0xCDAB;    // detect wrong endianness
 
 /*
  * Read/write map to/from a file.
@@ -482,6 +501,7 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     wchar_t *handleStr;
     int command;
     wchar_t *filename;
+    FILE *fp = NULL;
 
     bool success = false;
 
@@ -525,17 +545,64 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
     } else {
-        int r = _waccess(filename, 00);
-        if (r == -1) {
-            wprintf(L"The file \"%s\" does not exist!\n", filename);
+        fp = _wfopen(filename, hashfile_modes[command]);
+        if (fp == NULL) {
+            _wperror(L"hashfile");
             goto cleanup;
         }
         switch (command) {
         case HASHFILE_READ:
-            break;
+            hashmap_clear(map->hashmap, true);
+            // fall through
         case HASHFILE_MERGE:
-            break;
+            {
+                uint16_t marker = 0;
+                uint32_t count = 0;
+                bool needByteSwap;
+                
+                if (fread(&marker, 2, 1, fp) != 1) goto readError;
+                if (marker == hashfile_marker)
+                    needByteSwap = false;
+                else if (marker == hashfile_marker_swapped)
+                    needByteSwap = true;
+                else
+                    goto readError;
+                if (fread(&count, 4, 1, fp) != 1) goto readError;
+                for (unsigned int i = 0; i < count; i++) {
+                    uint32_t keyLen, valueLen;
+                    if (fread(&keyLen, 4, 1, fp) != 1) goto readError;
+                    if (fread(&valueLen, 4, 1, fp) != 1) goto readError;
+                    if (needByteSwap) {
+                        keyLen = _byteswap_ulong(keyLen);
+                        valueLen = _byteswap_ulong(valueLen);
+                    }
+                    wchar_t *buf = malloc(sizeof(wchar_t) * (keyLen + valueLen + 2));
+                    if (fread(buf, sizeof(wchar_t), keyLen, fp) != keyLen) goto readError;
+                    buf[keyLen] = L'\0';
+                    wchar_t *value = buf + keyLen + 1;
+                    if (fread(value, sizeof(wchar_t), valueLen, fp) != valueLen) goto readError;
+                    value[valueLen] = L'\0';
+                    if (needByteSwap) {
+                        for (UINT p = 0; p < keyLen; p++)
+                            buf[p] = _byteswap_ushort(buf[p]);
+                        for (UINT p = 0; p < valueLen; p++)
+                            value[p] = _byteswap_ushort(value[p]);
+                    }
+                    struct entry *oldEntry = hashmap_set(map->hashmap, &(struct entry){ .key = buf, .value = value });
+                    if (oldEntry)
+                        entry_free(oldEntry);
+                }
+                break;  // exit switch(command)
+                
+              readError:
+                fputws(L"hashmap: invalid hash file\n", stderr);
+                goto cleanup;
+            }
+            // unreachable - no break needed
         case HASHFILE_WRITE:
+            fwrite(&hashfile_marker, 2, 1, fp);
+            fwrite(&(uint32_t){ (uint32_t) hashmap_count(map->hashmap) }, 4, 1, fp);
+            hashmap_scan(map->hashmap, entry_iter_write_entry, fp);
             break;
         }
         success = true;
@@ -552,6 +619,8 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     // fall through to cleanup:
     
   cleanup:
+    if (fp && fclose(fp) != 0)
+        _wperror(L"hashfile");
     if (argv && LocalFree(argv) != NULL)
         fputws(L"hashmap: LocalFree failed\n", stderr);
     return success ? 0 : -1;
