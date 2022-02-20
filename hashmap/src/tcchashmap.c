@@ -492,6 +492,10 @@ static const wchar_t *hashfile_modes[] = {
 static const uint16_t hashfile_marker         = 0xABCD;
 static const uint16_t hashfile_marker_swapped = 0xCDAB;    // detect wrong endianness
 
+// macro used in the case HASHFILE_MERGE branch of hashfile()
+#define HASHFILE_CHECK_READ(buffer, size, count, stream) \
+            if (fread(buffer, size, count, stream) != count) goto readError
+
 /*
  * Read/write map to/from a file.
  */
@@ -559,28 +563,28 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
                 uint16_t marker = 0;
                 uint32_t count = 0;
                 bool needByteSwap;
-                
-                if (fread(&marker, 2, 1, fp) != 1) goto readError;
+
+                HASHFILE_CHECK_READ(&marker, 2, 1, fp);
                 if (marker == hashfile_marker)
                     needByteSwap = false;
                 else if (marker == hashfile_marker_swapped)
                     needByteSwap = true;
                 else
                     goto readError;
-                if (fread(&count, 4, 1, fp) != 1) goto readError;
+                HASHFILE_CHECK_READ(&count, 4, 1, fp);
                 for (unsigned int i = 0; i < count; i++) {
                     uint32_t keyLen, valueLen;
-                    if (fread(&keyLen, 4, 1, fp) != 1) goto readError;
-                    if (fread(&valueLen, 4, 1, fp) != 1) goto readError;
+                    HASHFILE_CHECK_READ(&keyLen, 4, 1, fp);
+                    HASHFILE_CHECK_READ(&valueLen, 4, 1, fp);
                     if (needByteSwap) {
                         keyLen = _byteswap_ulong(keyLen);
                         valueLen = _byteswap_ulong(valueLen);
                     }
                     wchar_t *buf = malloc(sizeof(wchar_t) * (keyLen + valueLen + 2));
-                    if (fread(buf, sizeof(wchar_t), keyLen, fp) != keyLen) goto readError;
+                    HASHFILE_CHECK_READ(buf, sizeof(wchar_t), keyLen, fp);
                     buf[keyLen] = L'\0';
                     wchar_t *value = buf + keyLen + 1;
-                    if (fread(value, sizeof(wchar_t), valueLen, fp) != valueLen) goto readError;
+                    HASHFILE_CHECK_READ(value, sizeof(wchar_t), valueLen, fp);
                     value[valueLen] = L'\0';
                     if (needByteSwap) {
                         for (UINT p = 0; p < keyLen; p++)
