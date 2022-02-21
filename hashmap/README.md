@@ -32,6 +32,8 @@ You can download prebuilt binaries from these links:
 
 ## Building
 
+You have two options:
+
 1.  Use CMake -- e.g.
 
     ```
@@ -39,6 +41,8 @@ You can download prebuilt binaries from these links:
           -DTCCHM_DEBUG=0 -DUSE_PCH=1 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
     cmake --build build\cmake-build
     ```
+    
+    This will generate `hashmap.dll` in `build\cmake-build`.
 
 2.  *Assuming that you have TCC, which you probably do, considering this is a TCC plugin*<br>
     
@@ -47,6 +51,8 @@ You can download prebuilt binaries from these links:
     ```
     ..\tmake.btm
     ```
+    
+    This will generate `hashmap.dll` in `build\tmake`.
 
 ## Usage
 
