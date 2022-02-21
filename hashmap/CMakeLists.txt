@@ -26,7 +26,7 @@ add_library(hashmap MODULE
 target_link_libraries(hashmap PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/lib/TakeCmd.lib")
 target_link_options(hashmap PUBLIC "/DYNAMICBASE" "/NXCOMPAT")
 set_target_properties(hashmap PROPERTIES
-    VERSION 0.1
+    VERSION 1.0
     OUTPUT_NAME hashmap
 )
 

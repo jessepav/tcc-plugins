@@ -111,6 +111,20 @@ PLUGIN_API BOOL WINAPI InitializePlugin(void) {
 }
 
 PLUGIN_API BOOL WINAPI ShutdownPlugin(BOOL bEndProcess) {
+    // Okay, let's check for existing maps and free them
+    int numFreed = 0;
+    for (unsigned int i = 0; i < handleCapacity; i++) {
+        if (mapPtrs[i] != NULL) {
+            hashmap_free(mapPtrs[i]->hashmap);
+            _set_errno(0);
+            free(mapPtrs[i]);
+            if (errno != 0)
+                _wperror(L"hashmap shutdown");
+            numFreed++;
+        }
+    }
+    if (numFreed)    
+        wprintf(L"hashmap: freed %d outstanding map(s)\n", numFreed);
     free(mapPtrs);
     free(availableHandles);
     return 0;

@@ -98,6 +98,16 @@ commands. If `<optional delimiter>` is supplied, it will be used in place of the
 `/` to separate keys and values in `@hashget` and `@hashput`, and when showing entries
 in `hashentries`.
 
+Example:
+
+```
+set handle=%@hashnew[=]
+set res=%@hashput[%handle,foo=bar]
+echo %@hashget[%handle,foo]
+echo %@hashget[%handle,baz=(default value, since baz isn't found)]
+set res=%@hashfree[%handle]
+```
+
 #### @hashfree
 
 Usage: `%@hashfree[<handle>]`
