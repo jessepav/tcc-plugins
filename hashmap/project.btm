@@ -12,5 +12,13 @@ set SOURCE_FILES=tcchashmap.c;hashmap.c
 
 :: To enable PCH usage, define these two variables; if omitted, PCH support is disabled
 :: Note that PCH_HEADER is a bare header name, and PCH_SOURCE is relative to SOURCE_DIR
-set PCH_HEADER=pch.h
-set PCH_SOURCE=pch.c
+:: set PCH_HEADER=pch.h
+:: set PCH_SOURCE=pch.c
+
+:: Custom link command
+set LINK_CMD=`link.exe /SUBSYSTEM:WINDOWS /NXCOMPAT /DYNAMICBASE /MACHINE:X64 /OPT:REF /INCREMENTAL:NO` ^
+             `/OUT:"%BUILD_DIR\out\%PROJECT_NAME.dll" /IMPLIB:"%BUILD_DIR\out\%PROJECT_NAME.lib" /DLL` ^
+             `/MANIFESTUAC:NO /MANIFEST /ManifestFile:"%BUILD_DIR\out\%PROJECT_NAME.dll.manifest"` ^
+             `/LIBPATH:"%PROJECT_DIR\lib"` ^
+             `"kernel32.lib" "user32.lib" "gdi32.lib" "advapi32.lib" "Shell32.lib"` ^
+             `/nologo %OBJ_FILES`
