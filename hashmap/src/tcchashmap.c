@@ -614,7 +614,7 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
     goto cleanup;
 
   showHelp:
-    _putws(L"Usage: hashentries <handle> </R | /M | /W > <filename>\n"
+    _putws(L"Usage: hashfile <handle> < /R | /M | /W > <filename>\n"
            L"\n"
            L"   /R = read hash entries from file, discarding any current entries\n"
            L"   /M = read hash entries from file, merging them with any current entries\n"
