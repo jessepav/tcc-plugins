@@ -3,6 +3,27 @@
 This is a plugin for JPSoftware's [Take Command] TCC shell that adds a fast in-memory hashmap
 data type.
 
+* [Download](#download)
+* [Building](#building)
+* [Usage](#usage)
+  * [Note on Argument Parsing & Key/Value Delimiters](#note-on-argument-parsing--keyvalue-delimiters)
+  * [Variable Functions](#variable-functions)
+    * [@hashnew](#hashnew)
+    * [@hashfree](#hashfree)
+    * [@hashdelim](#hashdelim)
+    * [@hashget](#hashget)
+    * [@hashput](#hashput)
+    * [@hashdel](#hashdel)
+    * [@hashclear](#hashclear)
+    * [@hashcount](#hashcount)
+  * [Commands](#commands)
+    * [hashentries](#hashentries)
+    * [hashfile](#hashfile)
+* [Examples](#examples)
+* [Licensing](#licensing)
+
+
+
 ## Download
 
 You can download prebuilt binaries from these links:
@@ -150,6 +171,10 @@ hashfile <handle> < /R | /M | /W > <filename>
 Saves or loads the contents of a map to/from disk. Using this command will be much faster
 than iterating through the keys using external TCC code.
 
+## Examples
+
+See the various `.btm` scripts in the [test] directory.
+
 ## Licensing
 
 The MIT License (MIT)
@@ -187,5 +212,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [`hashmap-x64.zip`]: https://app.box.com/shared/static/ly8jqtdopf0p2q9hvw93a2zj9yonowu4.zip
 [`hashmap.c`]: https://github.com/tidwall/hashmap.c
 [`@wild`]: https://jpsoft.com/help/f_wild.htm
+[test]: https://github.com/jessepav/tcc-plugins/tree/master/hashmap/test
 
 <!-- :wrap=none:noTabs=true:indentSize=2:maxLineLen=92: -->
