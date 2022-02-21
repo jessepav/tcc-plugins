@@ -23,7 +23,6 @@ data type.
 * [Licensing](#licensing)
 
 
-
 ## Download
 
 You can download prebuilt binaries from these links:
@@ -32,7 +31,11 @@ You can download prebuilt binaries from these links:
 
 ## Building
 
-You have two options:
+You'll need Visual Studio (at least the build tools) to build the plugin. I used VS2019, but
+any version that has basic C99 support should work (though you'll need to edit the build
+config to remove the `/std:c11` flag).
+
+For build systems you have two options:
 
 1.  Use CMake -- e.g.
 
