@@ -279,10 +279,20 @@ PLUGIN_API INT WINAPI f_hashfree(LPTSTR paramStr) {
 PLUGIN_API INT WINAPI f_hashdelim(LPTSTR paramStr) {
     unsigned int handle;
     struct map *map = NULL;
-    size_t len = wcslen(paramStr);
-    if (len == 0) {
-        wprintf(L"Usage: %%@hashdelim[handle]\n");
+    if (paramStr[0] == L'\0') {
+        wprintf(L"Usage: %%@hashdelim[handle[,<delimiter>]\n");
         return -1;
+    }
+    wchar_t *newdelim = NULL;
+    wchar_t *pcomma = wcschr(paramStr, L',');
+    if (pcomma) { // we're setting a new delimiter
+        *pcomma = L'\0';  // null-terminate handle
+        newdelim = pcomma + 1;
+        if (wcslen(newdelim) > MAX_DELIMITER_LENGTH) {
+            fwprintf(stderr, L"hashmap: delimiter length exceeds maximum allowed (%d)\n", MAX_DELIMITER_LENGTH);
+            paramStr[0] = L'\0';
+            return -1;
+        }
     }
     if (parseHandle(paramStr, wcslen(paramStr), &handle))
         map = mapPtrs[handle];
@@ -290,6 +300,8 @@ PLUGIN_API INT WINAPI f_hashdelim(LPTSTR paramStr) {
         wprintf(L"Hashmap: invalid handle\n");
         return -1;
     }
+    if (newdelim)
+        wcscpy(map->delimiter, newdelim);
     wcscpy(paramStr, map->delimiter);
     return 0;
 }

@@ -119,9 +119,17 @@ Free a hashmap created by `@hashnew`.
 
 #### @hashdelim
 
-Usage: `%@hashdelim[<handle>]`
+Usage: `%@hashdelim[<handle>[,<new delimiter>]]`
 
-Return the delimiter used by the hashmap.
+Return the delimiter used by the map, or, if `<new delimiter>` is given, sets the delimiter
+to the supplied string.
+
+Example:
+
+```
+echo %@hashdelim[%handle]
+echo %@hashdelim[%handle,==]
+```
 
 #### @hashget
 
