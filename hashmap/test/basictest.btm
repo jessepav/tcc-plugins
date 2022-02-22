@@ -2,7 +2,7 @@
 setlocal
 
 :: Check if the plugin is loaded
-IFF %@LEN[%@EXECSTR[plugin hashmap >&> NUL]] == 0 THEN
+IFF NOT PLUGIN Hashmap THEN
     echo Loading hashmap plugin...^n
     plugin /L "%@BATCHDIR[]\..\build\cmake-build\hashmap.dll"
     set needUnload=1
