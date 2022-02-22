@@ -233,15 +233,18 @@ static bool entry_iter_write_entry(const void *item, void *udata) {
 // TCC %@[] functions
 // ==============================================
 
-// Usage: %@hashnew[optional-delim]
+// Usage: %@hashnew[[<capacity>]]
 PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
-    size_t n = wcslen(paramStr);
-    if (n > MAX_DELIMITER_LENGTH) {
-        fwprintf(stderr, L"hashmap: delimiter length exceeds maximum allowed (%d)\n", MAX_DELIMITER_LENGTH);
-        paramStr[0] = L'\0';
-        return -1;
+    unsigned long capacity = 0;  // let hashmap.c use the default
+    if (wcslen(paramStr) > 0) {    // user passed a capacity
+        wchar_t *endptr;
+        capacity = wcstoul(paramStr, &endptr, 10);
+        if (*endptr != L'\0' || capacity == ULONG_MAX) {  // invalid capacity string
+            fwprintf(stderr, L"Invalid capacity given\n");
+            paramStr[0] = L'\0';
+            return -1;
+        }
     }
-    wchar_t *delimiter = n != 0 ? paramStr : DEFAULT_DELIMITER;
     unsigned int handle = checkoutHandle();
     if (handle == INVALID_HANDLE) {
         fwprintf(stderr, L"hashmap: unable to allocate new handle\n");
@@ -249,9 +252,9 @@ PLUGIN_API INT WINAPI f_hashnew(LPTSTR paramStr) {
         return -1;
     }
     struct map *map = malloc(sizeof(struct map));
-    map->hashmap = hashmap_new(sizeof(struct entry), 0, 0, 0,
+    map->hashmap = hashmap_new(sizeof(struct entry), (size_t) capacity, 0, 0,
                                entry_hash, entry_compare, entry_free, NULL);
-    wcscpy(map->delimiter, delimiter);
+    wcscpy(map->delimiter, DEFAULT_DELIMITER);
     mapPtrs[handle] = map;
     writeHandleString(handle, paramStr);
     return 0;

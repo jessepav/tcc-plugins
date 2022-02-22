@@ -1,5 +1,4 @@
 TODO
 -----------
 
-@hashnew's parameter should be the initial capacity
-@hashdelim should be used to set the delimiter
+

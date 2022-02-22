@@ -82,29 +82,27 @@ this plugin does not use TCC's standard parsing functions, and thus the escape c
 (`^`) and double quotes have no special meaning in arguments to the variable functions.
 
 Because commas are routinely found in filenames, the `@hashget` and `@hashput` functions
-separate the key and value using a delimiter, which is by default `/` but which may be given
-as an argument to `@hashnew`. You can choose a delimiter string – multi-character if
-desired – that is not found in any key, and then not worry about escaping commas or
-double-quoting strings.
-
-If you've ever tried to use the [`@wild`] function to test a file string that contains
-a comma, you'll see why this may be useful.
+separate the key and value using a delimiter, which is by default `/` but which may be
+changed by passing an extra argument to `@hashdelim`. You can choose any delimiter string –
+multi-character if desired – that is not found in your keys, and then not worry about escaping
+commas or double-quoting strings. (If you've ever tried to use the [`@wild`] function to
+test a file string that contains a comma, you'll see why this may be useful.)
 
 ### Variable Functions
 
 #### @hashnew
 
-Usage: `%@hashnew[<optional delimiter>]`
+Usage: `%@hashnew[[<capacity>]]`
 
 Creates a new hashmap and returns a handle, which is used in all the other functions and
-commands. If `<optional delimiter>` is supplied, it will be used in place of the default
-`/` to separate keys and values in `@hashget` and `@hashput`, and when showing entries
-in `hashentries`.
+commands. If `<capacity>` is given, it will be used as the initial capacity of the hashmap,
+instead of the default of 16 buckets.
 
 Example:
 
 ```
-set handle=%@hashnew[=]
+set handle=%@hashnew[]
+set res=%@hashdelim[%handle,=]
 set res=%@hashput[%handle,foo=bar]
 echo %@hashget[%handle,foo]
 echo %@hashget[%handle,baz=(default value, since baz isn't found)]
