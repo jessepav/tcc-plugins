@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+IF NOT ISFUNCTION BATCHDIR function BATCHDIR=`%@IF[%@LEN[%_batchname]==0,%_CWD,%@LEFT[-1,%@PATH["%_batchname"]]]`
+
 :: Check if the plugin is loaded
 IFF NOT PLUGIN Hashmap THEN
     echo Loading hashmap plugin...^n
@@ -71,6 +73,51 @@ IFF %testHandles==1 THEN
     DO i = 0 TO %((%n-1)) (set r=%@hashfree[%handles[%i]])
 
     unsetarray handles
+ENDIFF
+
+IFF %testPerf==1 THEN
+    set numEntries=1000
+    
+    echo ======== Hashmap ============
+    set h=%@hashnew[16]
+    echo Inserting %numEntries entries...
+    TIMER /1 /Q ON
+    DO i = 0 to %((%numEntries-1))
+        set r=%@hashput[%h,key-%i/value-%i]
+    ENDDO
+    echo The operation took %@TIMER[1,ms]^n
+    TIMER /1 /M /Q OFF
+
+    echo Retrieving %numEntries values...
+    TIMER /1 /Q ON
+    DO i = 0 to %((%numEntries-1))
+        set r=%@hashget[%h,key-%i]
+    ENDDO
+    echo The operation took %@TIMER[1,ms]
+    TIMER /1 /M /Q OFF
+    set r=%@hashfree[%h]
+    echo ==============================^n
+    
+    echo ======= Unqlite ==============
+    set unqDb=":mem:"
+    set r=%@UNQOPEN[RWC,%unqDb]
+    echo Inserting %numEntries entries...
+    TIMER /1 /Q ON
+    DO i = 0 to %((%numEntries-1))
+        set r=%@UNQKVS[u,%unqDb,"key-%i","value-%i"]
+    ENDDO
+    echo The operation took %@TIMER[1,ms]^n
+    TIMER /1 /M /Q OFF
+
+    echo Retrieving %numEntries values...
+    TIMER /1 /Q ON
+    DO i = 0 to %((%numEntries-1))
+        set r=%@UNQREADS[u,%unqDb,"key-%i"]
+    ENDDO
+    echo The operation took %@TIMER[1,ms]
+    TIMER /1 /M /Q OFF
+    set r=%@UNQCLOSE[%unqDb]
+    echo ==============================^n
 ENDIFF
 
 IF %needUnload==1 (echo Unloading hashmap plugin... & plugin /U hashmap)

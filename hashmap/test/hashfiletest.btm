@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+IF NOT ISFUNCTION BATCHDIR function BATCHDIR=`%@IF[%@LEN[%_batchname]==0,%_CWD,%@LEFT[-1,%@PATH["%_batchname"]]]`
+
 :: Check if the plugin is loaded
 IFF NOT PLUGIN Hashmap THEN
     echo Loading hashmap plugin...^n
