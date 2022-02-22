@@ -99,24 +99,29 @@ IFF %testPerf==1 THEN
     echo ==============================^n
     
     echo ======= Unqlite ==============
-    set unqDb=":mem:"
-    set r=%@UNQOPEN[RWC,%unqDb]
-    echo Inserting %numEntries entries...
-    TIMER /1 /Q ON
-    DO i = 0 to %((%numEntries-1))
-        set r=%@UNQKVS[u,%unqDb,"key-%i","value-%i"]
-    ENDDO
-    echo The operation took %@TIMER[1,ms]^n
-    TIMER /1 /M /Q OFF
+    :: The reason I'm using a file instead of ":mem:" is that I can't get ":mem:" to work
+    set unqdb="%@BATCHDIR[]\test.unqlite"
+    IFF NOT EXIST %unqdb THEN
+       set r=%@UNQOPEN[RWC,%unqdb]
+       echo Inserting %numEntries entries...
+       TIMER /1 /Q ON
+       DO i = 0 to %((%numEntries-1))
+           set r=%@UNQKVS[u,%unqdb,"key-%i","value-%i"]
+       ENDDO
+       echo The operation took %@TIMER[1,ms]^n
+       TIMER /1 /M /Q OFF
+       set r=%@UNQCLOSE[%unqdb]
+    ENDIFF
 
+    set r=%@UNQOPEN[MM,%unqdb]
     echo Retrieving %numEntries values...
     TIMER /1 /Q ON
     DO i = 0 to %((%numEntries-1))
-        set r=%@UNQREADS[u,%unqDb,"key-%i"]
+        set r=%@UNQREADS[u,%unqdb,"key-%i"]
     ENDDO
     echo The operation took %@TIMER[1,ms]
     TIMER /1 /M /Q OFF
-    set r=%@UNQCLOSE[%unqDb]
+    set r=%@UNQCLOSE[%unqdb]
     echo ==============================^n
 ENDIFF
 
