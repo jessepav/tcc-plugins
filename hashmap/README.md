@@ -3,6 +3,36 @@
 This is a plugin for JPSoftware's [Take Command] TCC shell that adds a fast in-memory hashmap
 data type.
 
+Compared to UnQLite, it
+
+* Is not transactional
+* Is not thread-safe
+* Doesn't support cursors
+* Doesn't support data sets larger than memory
+* Only supports textual values
+
+but
+
+* is faster and lighter
+
+  > For storing and persisting entries, it is *much, much* faster: in a basic performance
+  > test on my old laptop, storing 100 Unicode string entries and saving them to disk took
+  > 41 ms using Hashmap and 6731 ms using UnQLite. (This probably involves the @UNQ commands
+  > flushing to disk after every call, but for the user who doesn't need ACID guarantees,
+  > the result is painful slowness.)
+  >
+  > To run the test yourself, `SET testPerf=3 & .\test\basictest.btm`
+  
+* provides more convenient syntax for inserting and retrieving entries with commas and
+  quotation marks in their keys or values.
+
+* allows for multiple in-memory maps
+
+Basically, it's just a typical hashmap, as found in standard programming languages, along
+with a method to persist them to disk.
+
+--------------
+
 * [Download](#download)
 * [Building](#building)
 * [Usage](#usage)

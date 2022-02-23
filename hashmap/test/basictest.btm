@@ -78,23 +78,27 @@ ENDIFF
 ::  1 = test hashmap performance
 ::  2 = test UnQLite performance
 IFF DEFINED testPerf THEN
-    set numEntries=1000
+    set numEntries=100
     
     IFF %((%testPerf & 1)) != 0 THEN
+        set hfdb=%@BATCHDIR[]\perftest.hf
         echo ======== Hashmap ============
         set h=%@hashnew[16]
-        echo Inserting %numEntries entries...
+        echo Inserting %numEntries entries and saving to disk...
         TIMER /1 /Q ON
         DO i = 0 to %((%numEntries-1))
             set r=%@hashput[%h,key-%i/value-%i]
         ENDDO
+        hashfile %h /W "%hfdb"
         echo The operation took %@TIMER[1,ms]^n
         TIMER /1 /M /Q OFF
 
         echo Retrieving %numEntries values...
         TIMER /1 /Q ON
+        hashfile %h /R "%hfdb"
         DO i = 0 to %((%numEntries-1))
             set r=%@hashget[%h,key-%i]
+            :: IF %r NE value-%i echo Value failure at key-%i
         ENDDO
         echo The operation took %@TIMER[1,ms]
         TIMER /1 /M /Q OFF
@@ -103,24 +107,21 @@ IFF DEFINED testPerf THEN
     ENDIFF
     
     IFF %((%testPerf & 2)) != 0 THEN
+        set unqdb=%@BATCHDIR[]\perftest.unqlite
         echo ======= Unqlite ==============
-        :: The reason I'm using a file instead of ":mem:" is that I can't get ":mem:" to work
-        set unqdb="%@BATCHDIR[]\test.unqlite"
-        IFF NOT EXIST %unqdb THEN
-           set r=%@UNQOPEN[RWC,%unqdb]
-           echo Inserting %numEntries entries...
-           TIMER /1 /Q ON
-           DO i = 0 to %((%numEntries-1))
-               set r=%@UNQKVS[u,%unqdb,"key-%i","value-%i"]
-           ENDDO
-           echo The operation took %@TIMER[1,ms]^n
-           TIMER /1 /M /Q OFF
-           set r=%@UNQCLOSE[%unqdb]
-        ENDIFF
+        set r=%@UNQOPEN[RWC,"%unqdb"]
+        echo Inserting %numEntries entries into DB...
+        TIMER /1 /Q ON
+        DO i = 0 to %((%numEntries-1))
+            set r=%@UNQKVS[u,"%unqdb","key-%i","value-%i"]
+        ENDDO
+        echo The operation took %@TIMER[1,ms]^n
+        TIMER /1 /M /Q OFF
+        set r=%@UNQCLOSE["%unqdb"]
 
-        set r=%@UNQOPEN[MM,%unqdb]
         echo Retrieving %numEntries values...
         TIMER /1 /Q ON
+        set r=%@UNQOPEN[MM,%unqdb]
         DO i = 0 to %((%numEntries-1))
             set r=%@UNQREADS[u,%unqdb,"key-%i"]
         ENDDO
