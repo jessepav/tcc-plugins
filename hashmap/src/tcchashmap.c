@@ -18,7 +18,8 @@
 #define DEFAULT_DELIMITER L"/"
 
 #define MAX_HANDLE_LENGTH 21 // 20 characters + null
-#define HANDLE_FORMAT L"H%04uU"
+#define HANDLE_FORMAT L"HMH#%04uU"
+#define HANDLE_LENGTH 9
 #define DEFAULT_HANDLE_CAPACITY 16
 #define MAX_HANDLE_CAPACITY 1024
 #define INVALID_HANDLE UINT_MAX
@@ -89,7 +90,8 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszWWW = (LPTSTR)L"www.illcode.com";
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
-        L"@hashnew,@hashfree,@hashdelim,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
+        L"@hashnew,@hashfree,@hashdelim,@hashget,@hashput,@hashdel,"
+        L"@hashclear,@hashcount,@ishashhandle,"
         L"hashentries,hashfile,hashfreeall";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
@@ -192,8 +194,10 @@ static int writeHandleString(unsigned int handle, LPTSTR dest) {
 // 'length' indicates the number of characters in 'handleStr' the function will consider.
 // Returns 'true' if the parse was successful, 'false' otherwise.
 static bool parseHandle(LPTSTR handleStr, size_t length, unsigned int *handle) {
+    if (length != HANDLE_LENGTH)
+        return false;
     unsigned int h;
-    if (_snwscanf(handleStr, length, HANDLE_FORMAT, &h) == 1 && h < handleCapacity) {
+    if (_snwscanf(handleStr, length, HANDLE_FORMAT, &h) == 1 && h < handleCapacity && mapPtrs[h] != NULL) {
         *handle = h;
         return true;
     } else {
@@ -428,7 +432,7 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
         wprintf(L"Usage: %%@hashcount[handle]\n");
         return -1;
     }
-    if (parseHandle(paramStr, wcslen(paramStr), &handle))
+    if (parseHandle(paramStr, len, &handle))
         map = mapPtrs[handle];
     if (map == NULL) {
         wprintf(L"Hashmap: invalid handle\n");
@@ -436,6 +440,20 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
     }
     unsigned int count = (unsigned int) hashmap_count(map->hashmap);
     _ultow(count, paramStr, 10);
+    return 0;
+}
+
+PLUGIN_API INT WINAPI f_ishashhandle(LPTSTR paramStr) {
+    unsigned int handle;
+    size_t len = wcslen(paramStr);
+    if (len == 0) {
+        wprintf(L"Usage: %%@ishashhandle[handle]\n");
+        return -1;
+    }
+    if (parseHandle(paramStr, len, &handle))
+        wcscpy(paramStr, L"1");
+    else
+        wcscpy(paramStr, L"0");
     return 0;
 }
 
