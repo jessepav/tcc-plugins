@@ -692,7 +692,8 @@ PLUGIN_API INT WINAPI hashfreeall(LPTSTR argStr) {
             numFreed++;
         }
     }
-    if (numFreed && verbose)
+    nextHandleIdx = 0;
+    if (verbose)
         wprintf(L"Freed %d outstanding map(s)\n", numFreed);
     success = true;
     goto cleanup;
