@@ -90,7 +90,7 @@ PLUGIN_API LPPLUGININFO WINAPI GetPluginInfo(HMODULE hModule) {
     piInfo.pszDescription = (LPTSTR)L"Hashmap for TCC";
     piInfo.pszFunctions = (LPTSTR)
         L"@hashnew,@hashfree,@hashdelim,@hashget,@hashput,@hashdel,@hashclear,@hashcount,"
-        L"hashentries,hashfile";
+        L"hashentries,hashfile,hashfreeall";
     piInfo.nMajor = 1;
     piInfo.nMinor = 0;
     piInfo.nBuild = 1;
@@ -654,6 +654,57 @@ PLUGIN_API INT WINAPI hashfile(LPTSTR argStr) {
   cleanup:
     if (fp && fclose(fp) != 0)
         _wperror(L"hashfile");
+    if (argv && LocalFree(argv) != NULL)
+        fputws(L"hashmap: LocalFree failed\n", stderr);
+    return success ? 0 : -1;
+}
+
+/*
+ * Frees all outstanding maps.
+ */
+PLUGIN_API INT WINAPI hashfreeall(LPTSTR argStr) {
+    LPWSTR *argv = NULL;
+    int numArgs;
+    bool verbose = false;
+    bool success = false;
+
+    while (iswspace((wint_t) *argStr)) argStr++;  // Trim leading space
+    if (*argStr != L'\0') {
+        argv = CommandLineToArgvW(argStr, &numArgs);
+        if (argv == NULL || numArgs > 1)
+            goto showHelp;
+        wchar_t *flag = argv[0];
+        if (_wcsicmp(flag, L"/V") == 0)
+            verbose = true;
+        else
+            goto showHelp;
+    }
+    int numFreed = 0;
+    for (unsigned int i = 0; i < handleCapacity; i++) {
+        availableHandles[i] = i;  // reset the handle indices
+        if (mapPtrs[i] != NULL) {
+            hashmap_free(mapPtrs[i]->hashmap);
+            _set_errno(0);
+            free(mapPtrs[i]);
+            if (errno != 0)
+                _wperror(L"hashmap shutdown");
+            mapPtrs[i] = NULL;
+            numFreed++;
+        }
+    }
+    if (numFreed && verbose)
+        wprintf(L"Freed %d outstanding map(s)\n", numFreed);
+    success = true;
+    goto cleanup;
+
+  showHelp:
+    _putws(L"Usage: hashfreeall [/V]\n"
+           L"\n"
+           L"   /V = verbose; print number of hashmaps freed"
+           );
+    // fall through to cleanup
+
+  cleanup:
     if (argv && LocalFree(argv) != NULL)
         fputws(L"hashmap: LocalFree failed\n", stderr);
     return success ? 0 : -1;
