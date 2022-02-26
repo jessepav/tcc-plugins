@@ -46,9 +46,11 @@ with a method to persist them to disk.
     * [@hashdel](#hashdel)
     * [@hashclear](#hashclear)
     * [@hashcount](#hashcount)
+    * [@ishashhandle](#ishashhandle)
   * [Commands](#commands)
     * [hashentries](#hashentries)
     * [hashfile](#hashfile)
+    * [hashfreeall](#hashfreeall)
 * [Examples](#examples)
 * [Licensing](#licensing)
 
@@ -198,6 +200,12 @@ Usage: `%@hashcount[<handle>]`
 
 Return the number of entries in the map.
 
+#### @ishashhandle
+
+Usage: `%@isHashHandle[<handle>]`
+
+Return 1 if `<handle>` is a valid map handle, or 0 otherwise.
+
 ### Commands
 
 #### hashentries
@@ -225,6 +233,17 @@ hashfile <handle> < /R | /M | /W > <filename>
 
 Saves or loads the contents of a map to/from disk. Using this command will be much faster
 than iterating through the keys using external TCC code.
+
+#### hashfreeall
+
+```
+Usage: hashfreeall [/V]
+
+   /V = verbose; print number of hashmaps freed
+```
+
+Frees all outstanding hashmaps. This is useful if you don't want to keep track of all your
+allocated hashmaps in a script, to free memory at the end and avoid leaks.
 
 ## Examples
 
