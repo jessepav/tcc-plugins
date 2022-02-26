@@ -445,12 +445,7 @@ PLUGIN_API INT WINAPI f_hashcount(LPTSTR paramStr) {
 
 PLUGIN_API INT WINAPI f_ishashhandle(LPTSTR paramStr) {
     unsigned int handle;
-    size_t len = wcslen(paramStr);
-    if (len == 0) {
-        wprintf(L"Usage: %%@ishashhandle[handle]\n");
-        return -1;
-    }
-    if (parseHandle(paramStr, len, &handle))
+    if (parseHandle(paramStr, wcslen(paramStr), &handle))
         wcscpy(paramStr, L"1");
     else
         wcscpy(paramStr, L"0");

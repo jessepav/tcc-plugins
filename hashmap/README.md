@@ -101,11 +101,13 @@ Variable Functions:
 * [@hashdel](#hashdel)
 * [@hashclear](#hashclear)
 * [@hashcount](#hashcount)
+* [@ishashhandle](#ishashhandle)
 
 Commands:
 
 * [hashentries](#hashentries)
 * [hashfile](#hashfile)
+* [hashfreeall](#hashfreeall)
 
 ### Note on Argument Parsing & Key/Value Delimiters
 
@@ -204,7 +206,19 @@ Return the number of entries in the map.
 
 Usage: `%@isHashHandle[<handle>]`
 
-Return 1 if `<handle>` is a valid map handle, or 0 otherwise.
+Return 1 if `<handle>` is a valid hashmap handle, or 0 otherwise.
+
+This is useful if you want to have maps nested inside other maps, for instance:
+
+```
+set val=%@hashget[%handle1,%key]
+IFF %@isHashHandle[%val]==1 THEN
+    set handle2=%val
+    :: More processing with the second hashmap
+ELSE
+    :: %val is a simple value
+ENDIFF
+```
 
 ### Commands
 
