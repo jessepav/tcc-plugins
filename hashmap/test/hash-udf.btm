@@ -1,0 +1,33 @@
+@echo off
+
+:: This is an example posted to the jpsoft.com forums showing how to store and retrieve
+:: some TCC user-defined-function code using a hashmap.
+
+setlocal
+
+:: Create a new hashmap
+set h=%@hashnew[]
+
+:: Store the function code under key 'func1'
+set r=%@hashput[%h,func1/`%@index[1 7,%_dowi,0]`]
+
+:: Turn off nested variable expansion
+setdos /X-4
+
+:: Get the code back from the hashmap
+set func=%@hashget[%h,func1]
+
+:: Show the code
+echos %func
+
+:: Restore nested variable expansion
+setdos /X0
+
+:: Evaluate the code
+echo ` = `%func
+
+:: Free the map
+set r=%@hashfree[%h]
+
+endlocal
+
