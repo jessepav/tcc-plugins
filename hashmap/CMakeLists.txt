@@ -21,6 +21,7 @@ set(CMAKE_C_STANDARD_LIBRARIES [["kernel32.lib" "user32.lib" "gdi32.lib" "advapi
 add_library(hashmap MODULE
     "src/tcchashmap.c"
     "src/hashmap.c"
+    "src/hashmap.rc"
 )
 
 target_link_libraries(hashmap PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/lib/TakeCmd.lib")
